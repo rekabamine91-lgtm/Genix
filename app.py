@@ -1,25 +1,28 @@
-from flask import Flask, request, render_template_string, redirect, jsonify, session
+from flask import Flask, request, render_template_string, redirect, jsonify, session, send_file
 import sqlite3
 import os
 import hashlib
 import secrets
+import pandas as pd
+import json
 from datetime import datetime
 from functools import wraps
+from io import BytesIO
+import arabic_reshaper
+from bidi.algorithm import get_display
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # ==================== دوال الأمان ====================
 
 def hash_password(password):
-    """تشفير كلمة المرور باستخدام SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def init_users():
-    """إنشاء جدول المستخدمين ومستخدم افتراضي"""
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,26 +32,20 @@ def init_users():
             created_at DATE
         )
     ''')
-    
-    # التحقق من وجود مستخدم admin، إذا لم يكن موجوداً يتم إنشاؤه
     c.execute("SELECT * FROM users WHERE username = 'admin'")
     if not c.fetchone():
         admin_pass = hash_password('admin123')
         c.execute("INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)",
                   ('admin', admin_pass, 'admin', datetime.now().strftime('%Y-%m-%d')))
-    
-    # إضافة مستخدم مشاهد (viewer) للاختبار
     c.execute("SELECT * FROM users WHERE username = 'viewer'")
     if not c.fetchone():
         viewer_pass = hash_password('viewer123')
         c.execute("INSERT INTO users (username, password, role, created_at) VALUES (?, ?, ?, ?)",
                   ('viewer', viewer_pass, 'viewer', datetime.now().strftime('%Y-%m-%d')))
-    
     conn.commit()
     conn.close()
 
 def login_required(f):
-    """ديكوراتور لحماية المسارات التي تتطلب تسجيل دخول"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
@@ -57,75 +54,106 @@ def login_required(f):
     return decorated_function
 
 def admin_required(f):
-    """ديكوراتور لحماية المسارات التي تتطلب صلاحيات مدير"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect('/login')
         if session.get('role') != 'admin':
-            return "⛔ غير مصرح لك بالوصول إلى هذه الصفحة", 403
+            return "⛔ غير مصرح لك", 403
         return f(*args, **kwargs)
     return decorated_function
 
 def get_current_user():
-    """جلب معلومات المستخدم الحالي"""
     if 'user_id' in session:
         return {'id': session['user_id'], 'username': session['username'], 'role': session['role']}
     return None
 
-# ==================== هيكل الرتب والمنح ====================
-
-GRADES_DATA = [
-    {'name_ar': 'ممارس متخصص خارج الصنف', 'name_fr': 'Praticien spécialiste hors classe', 'sector': 'صحة', 'category': 'طبيب مختص', 'base_salary': 204000, 'order': 1, 'icon': '🩺'},
-    {'name_ar': 'طبيب عام رئيس', 'name_fr': 'Médecin généraliste principal', 'sector': 'صحة', 'category': 'طبيب عام', 'base_salary': 145000, 'order': 2, 'icon': '👨‍⚕️'},
-    {'name_ar': 'ممارس طبي عام', 'name_fr': 'Praticien médical généraliste', 'sector': 'صحة', 'category': 'طبيب عام', 'base_salary': 120000, 'order': 3, 'icon': '👨‍⚕️'},
-    {'name_ar': 'ممرض ممتاز', 'name_fr': 'Infirmier senior', 'sector': 'صحة', 'category': 'شبه طبي', 'base_salary': 85000, 'order': 4, 'icon': '💉'},
-    {'name_ar': 'ممرض رئيسي', 'name_fr': 'Infirmier principal', 'sector': 'صحة', 'category': 'شبه طبي', 'base_salary': 75000, 'order': 5, 'icon': '💉'},
-    {'name_ar': 'قابلة رئيسة', 'name_fr': 'Sage-femme principale', 'sector': 'صحة', 'category': 'قابلة', 'base_salary': 90000, 'order': 6, 'icon': '👶'},
-    {'name_ar': 'مدير إدارة مركزية', 'name_fr': "Directeur d'administration", 'sector': 'إدارة', 'category': 'إداري', 'base_salary': 150000, 'order': 7, 'icon': '👔'},
-    {'name_ar': 'رئيس مصلحة', 'name_fr': 'Chef de service', 'sector': 'إدارة', 'category': 'إداري', 'base_salary': 120000, 'order': 8, 'icon': '📋'},
-    {'name_ar': 'كاتب إداري', 'name_fr': 'Rédacteur', 'sector': 'إدارة', 'category': 'إداري', 'base_salary': 80000, 'order': 9, 'icon': '✍️'},
-    {'name_ar': 'عون إداري', 'name_fr': 'Agent admin', 'sector': 'إدارة', 'category': 'إداري', 'base_salary': 60000, 'order': 10, 'icon': '🖥️'},
-    {'name_ar': 'تقني سامي', 'name_fr': 'Technicien supérieur', 'sector': 'تقني', 'category': 'مهني', 'base_salary': 70000, 'order': 11, 'icon': '🔧'},
-    {'name_ar': 'عون خدمة', 'name_fr': 'Agent de service', 'sector': 'خدمات', 'category': 'خدمة', 'base_salary': 40000, 'order': 12, 'icon': '🧹'},
-]
-
-ALLOWANCES_DATA = [
-    {'code': '101', 'name_ar': 'منحة الخبرة', 'name_fr': "Prime d'expérience", 'amount': 0.15, 'is_percentage': True},
-    {'code': '102', 'name_ar': 'منحة السكن', 'name_fr': 'Prime logement', 'amount': 5000, 'is_percentage': False},
-    {'code': '103', 'name_ar': 'منحة النقل', 'name_fr': 'Prime transport', 'amount': 3000, 'is_percentage': False},
-    {'code': '104', 'name_ar': 'منحة خطر العدوى', 'name_fr': "Prime d'infection", 'amount': 8000, 'is_percentage': False},
-]
-
-# ==================== دوال قاعدة البيانات ====================
+# ==================== قاعدة البيانات المتطورة ====================
 
 def init_database():
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS grades (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name_ar TEXT, name_fr TEXT, sector TEXT, category TEXT,
-        base_salary REAL, "order" INTEGER, icon TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS allowances (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        code TEXT, name_ar TEXT, name_fr TEXT, amount REAL, is_percentage BOOLEAN)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS employees (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT, position TEXT, grade_id INTEGER,
-        base_salary REAL, hire_date DATE, status TEXT DEFAULT 'actif')''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS grades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name_ar TEXT,
+            name_fr TEXT,
+            category TEXT,
+            base_salary REAL,
+            "order" INTEGER,
+            icon TEXT
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS allowances (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT UNIQUE,
+            name_ar TEXT,
+            name_fr TEXT,
+            amount REAL,
+            is_percentage BOOLEAN DEFAULT 0,
+            is_active BOOLEAN DEFAULT 1
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS employees (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT UNIQUE,
+            name TEXT NOT NULL,
+            position TEXT,
+            grade_id INTEGER,
+            base_salary REAL,
+            family_allowance REAL DEFAULT 0,
+            regional_allowance REAL DEFAULT 0,
+            contract_type TEXT DEFAULT 'cadre',
+            hire_date DATE,
+            status TEXT DEFAULT 'actif',
+            FOREIGN KEY (grade_id) REFERENCES grades(id)
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS payroll_archive (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            month INTEGER,
+            year INTEGER,
+            employee_id INTEGER,
+            employee_code TEXT,
+            employee_name TEXT,
+            grade_name TEXT,
+            base_salary REAL,
+            total_allowances REAL,
+            gross_salary REAL,
+            irg REAL,
+            cnap REAL,
+            net_salary REAL,
+            created_at DATE,
+            FOREIGN KEY (employee_id) REFERENCES employees(id)
+        )
+    ''')
     
-    for grade in GRADES_DATA:
-        c.execute('''INSERT OR IGNORE INTO grades 
-                    (name_ar, name_fr, sector, category, base_salary, "order", icon) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                  (grade['name_ar'], grade['name_fr'], grade['sector'], 
-                   grade['category'], grade['base_salary'], grade['order'], grade['icon']))
+    default_grades = [
+        ('طبيب مختص', 'Médecin spécialiste', 'طبي', 180000, 1, '🩺'),
+        ('طبيب عام', 'Médecin généraliste', 'طبي', 120000, 2, '👨‍⚕️'),
+        ('ممرض رئيسي', 'Infirmier principal', 'طبي', 75000, 3, '💉'),
+        ('ممرض', 'Infirmier', 'طبي', 60000, 4, '💉'),
+        ('مدير', 'Directeur', 'إداري', 150000, 5, '👔'),
+        ('كاتب', 'Rédacteur', 'إداري', 80000, 6, '✍️'),
+        ('عون', 'Agent', 'خدمات', 50000, 7, '🔧'),
+    ]
+    for grade in default_grades:
+        c.execute('''INSERT OR IGNORE INTO grades (name_ar, name_fr, category, base_salary, "order", icon) 
+                    VALUES (?, ?, ?, ?, ?, ?)''', grade)
     
-    for allowance in ALLOWANCES_DATA:
-        c.execute('''INSERT OR IGNORE INTO allowances 
-                    (code, name_ar, name_fr, amount, is_percentage) VALUES (?, ?, ?, ?, ?)''',
-                  (allowance['code'], allowance['name_ar'], allowance['name_fr'], 
-                   allowance['amount'], allowance['is_percentage']))
+    default_allowances = [
+        ('101', 'منحة الخبرة', "Prime d'expérience", 0.15, 1, 1),
+        ('102', 'منحة السكن', 'Prime logement', 5000, 0, 1),
+        ('103', 'منحة النقل', 'Prime transport', 3000, 0, 1),
+        ('104', 'منحة المنطقة', "Prime d'éloignement", 0.10, 1, 1),
+        ('105', 'منحة المردودية', 'Prime de rendement', 0.08, 1, 1),
+    ]
+    for allowance in default_allowances:
+        c.execute('''INSERT OR IGNORE INTO allowances (code, name_ar, name_fr, amount, is_percentage, is_active) 
+                    VALUES (?, ?, ?, ?, ?, ?)''', allowance)
     conn.commit()
     conn.close()
 
@@ -153,32 +181,166 @@ def calculate_irg(salary):
     else:
         return 83500 + (salary - 320000) * 0.40
 
-def calculate_salary_with_allowances(base_salary):
+def calculate_total_allowances(base_salary, family=0, regional=0):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT amount, is_percentage FROM allowances")
+    c.execute("SELECT amount, is_percentage FROM allowances WHERE is_active = 1")
     allowances = c.fetchall()
     conn.close()
-    
-    total_allowances = 0
+    total = family + regional
     for allowance in allowances:
         if allowance['is_percentage']:
-            total_allowances += base_salary * allowance['amount']
+            total += base_salary * allowance['amount']
         else:
-            total_allowances += allowance['amount']
-    
-    gross_salary = base_salary + total_allowances
-    irg = calculate_irg(gross_salary)
-    cnap = gross_salary * 0.09
-    net_salary = gross_salary - irg - cnap
-    
+            total += allowance['amount']
+    return total
+
+def calculate_net_salary(base_salary, family=0, regional=0):
+    total_allowances = calculate_total_allowances(base_salary, family, regional)
+    gross = base_salary + total_allowances
+    irg = calculate_irg(gross)
+    cnap = gross * 0.09
+    net = gross - irg - cnap
     return {
-        'gross_salary': round(gross_salary, 2),
-        'total_allowances': round(total_allowances, 2),
-        'irg': round(irg, 2),
-        'cnap': round(cnap, 2),
-        'net_salary': round(net_salary, 2)
+        'base': base_salary,
+        'allowances': total_allowances,
+        'gross': gross,
+        'irg': irg,
+        'cnap': cnap,
+        'net': net
     }
+
+# ==================== API الاستيراد والتصدير ====================
+
+@app.route('/api/import_excel', methods=['POST'])
+@admin_required
+def import_excel():
+    try:
+        file = request.files.get('file')
+        if not file:
+            return jsonify({'error': 'No file uploaded'}), 400
+        df = pd.read_excel(file)
+        conn = get_db()
+        c = conn.cursor()
+        imported = 0
+        errors = []
+        column_mapping = {
+            'name': ['الاسم', 'الاسم الكامل', 'Name', 'Nom'],
+            'code': ['الرقم', 'رقم التسجيل', 'Code', 'Matricule'],
+            'position': ['المنصب', 'الرتبة', 'Position', 'Poste'],
+            'base_salary': ['الراتب', 'الأجر', 'Salary', 'Salaire'],
+            'family_allowance': ['منحة عائلية', 'Famille'],
+            'regional_allowance': ['منحة المنطقة', 'Region']
+        }
+        detected = {}
+        for key, possible_names in column_mapping.items():
+            for col in df.columns:
+                if any(name in str(col) for name in possible_names):
+                    detected[key] = col
+                    break
+        if 'name' not in detected:
+            return jsonify({'error': 'Could not detect name column'}), 400
+        for idx, row in df.iterrows():
+            try:
+                name = str(row[detected['name']])
+                code = str(row[detected.get('code', 'CODE')]) if detected.get('code') else f"EMP{idx+1:04d}"
+                position = str(row[detected.get('position', '')]) if detected.get('position') else ''
+                base_salary = float(row[detected.get('base_salary', '')]) if detected.get('base_salary') and pd.notna(row[detected.get('base_salary')]) else 50000
+                family = float(row[detected.get('family_allowance', '')]) if detected.get('family_allowance') and pd.notna(row[detected.get('family_allowance')]) else 0
+                regional = float(row[detected.get('regional_allowance', '')]) if detected.get('regional_allowance') and pd.notna(row[detected.get('regional_allowance')]) else 0
+                grade_id = 1
+                if position:
+                    c.execute("SELECT id FROM grades WHERE name_ar LIKE ? OR name_fr LIKE ?", (f'%{position}%', f'%{position}%'))
+                    grade = c.fetchone()
+                    if grade:
+                        grade_id = grade['id']
+                c.execute('''INSERT OR REPLACE INTO employees 
+                            (code, name, position, grade_id, base_salary, family_allowance, regional_allowance, hire_date) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                          (code, name, position, grade_id, base_salary, family, regional, datetime.now().strftime('%Y-%m-%d')))
+                imported += 1
+            except Exception as e:
+                errors.append(f"Row {idx+2}: {str(e)}")
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'imported': imported, 'errors': errors, 'total_rows': len(df)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/export_etat_matrice')
+@admin_required
+def export_etat_matrice():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT e.id, e.code, e.name, e.position, g.name_ar as grade, 
+               e.base_salary, e.family_allowance, e.regional_allowance, e.contract_type
+        FROM employees e
+        JOIN grades g ON e.grade_id = g.id
+        WHERE e.status = 'actif'
+        ORDER BY g."order", e.name
+    ''')
+    employees = c.fetchall()
+    conn.close()
+    data = []
+    for emp in employees:
+        salary_data = calculate_net_salary(emp['base_salary'], emp['family_allowance'], emp['regional_allowance'])
+        data.append({
+            'الرقم التسلسلي': emp['code'],
+            'الاسم الكامل': emp['name'],
+            'الرتبة / المنصب': emp['grade'],
+            'نوع العقد': 'مرسم' if emp['contract_type'] == 'cadre' else 'متعاقد',
+            'الراتب القاعدي': emp['base_salary'],
+            'منحة عائلية': emp['family_allowance'],
+            'منحة المنطقة': emp['regional_allowance'],
+            'مجموع المنح': salary_data['allowances'],
+            'الراتب الإجمالي': salary_data['gross'],
+            'IRG': salary_data['irg'],
+            'CNAS': salary_data['cnap'],
+            'صافي الراتب': salary_data['net']
+        })
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Etat Matrice', index=False)
+    output.seek(0)
+    return send_file(output, as_attachment=True, download_name=f'etat_matrice_{datetime.now().strftime("%Y%m%d")}.xlsx')
+
+@app.route('/api/stats')
+@login_required
+def api_stats():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM employees WHERE status = 'actif'")
+    total_employees = c.fetchone()[0]
+    c.execute("SELECT SUM(base_salary) FROM employees WHERE status = 'actif'")
+    total_payroll = c.fetchone()[0] or 0
+    c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'cadre'")
+    cadres = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'contract'")
+    contracts = c.fetchone()[0]
+    workers = total_employees - cadres - contracts
+    conn.close()
+    return jsonify({
+        'total_employees': total_employees,
+        'total_payroll': total_payroll,
+        'cadres': cadres,
+        'workers': workers,
+        'contracts': contracts,
+        'total_cnas': total_payroll * 0.09,
+        'total_irg': total_payroll * 0.15
+    })
+
+@app.route('/api/search')
+@login_required
+def api_search():
+    q = request.args.get('q', '')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT code, name FROM employees WHERE code LIKE ? OR name LIKE ? LIMIT 20", (f'%{q}%', f'%{q}%'))
+    results = [{'code': row[0], 'name': row[1]} for row in c.fetchall()]
+    conn.close()
+    return jsonify(results)
 
 # ==================== صفحات تسجيل الدخول ====================
 
@@ -260,13 +422,11 @@ def login():
         username = request.form['username']
         password = request.form['password']
         hashed = hash_password(password)
-        
         conn = get_db()
         c = conn.cursor()
         c.execute("SELECT id, username, role FROM users WHERE username = ? AND password = ?", (username, hashed))
         user = c.fetchone()
         conn.close()
-        
         if user:
             session['user_id'] = user['id']
             session['username'] = user['username']
@@ -274,7 +434,6 @@ def login():
             return redirect('/')
         else:
             error = 'اسم المستخدم أو كلمة المرور غير صحيحة'
-    
     return render_template_string(LOGIN_TEMPLATE, error=error)
 
 @app.route('/logout')
@@ -287,59 +446,59 @@ def logout():
 with open('template.html', 'r', encoding='utf-8') as f:
     TEMPLATE = f.read()
 
-# ==================== المسارات الرئيسية المحمية ====================
+# ==================== المسارات الرئيسية ====================
 
 @app.route('/')
 @login_required
 def index():
     user = get_current_user()
     is_admin = user['role'] == 'admin'
-    
     conn = get_db()
     c = conn.cursor()
-    
     c.execute('''
-        SELECT e.id, e.name, e.position, e.base_salary, g.name_ar, g.sector, g.icon, g.base_salary as grade_salary
+        SELECT e.id, e.code, e.name, e.position, e.base_salary, e.family_allowance, e.regional_allowance,
+               g.name_ar as grade_name, g.sector, g.icon, g.base_salary as grade_salary, e.contract_type
         FROM employees e
         JOIN grades g ON e.grade_id = g.id
-        ORDER BY g."order"
+        WHERE e.status = 'actif'
+        ORDER BY g."order", e.name
     ''')
     rows = c.fetchall()
-    
     employees_list = []
     total_net = 0
     for row in rows:
         salary = row['base_salary'] if row['base_salary'] > 0 else row['grade_salary']
-        res = calculate_salary_with_allowances(salary)
-        net = res['net_salary']
+        res = calculate_net_salary(salary, row['family_allowance'], row['regional_allowance'])
+        net = res['net']
         total_net += net
         employees_list.append({
             'id': row['id'],
+            'code': row['code'],
             'name': row['name'],
             'position': row['position'],
-            'grade_name': row['name_ar'],
-            'sector': row['sector'],
+            'grade_name': row['grade_name'],
             'icon': row['icon'],
             'base_salary': salary,
-            'net': net
+            'net': net,
+            'contract_type': row['contract_type']
         })
-    
     c.execute("SELECT id, name_ar, icon, base_salary FROM grades ORDER BY \"order\"")
     grades = [{'id': row['id'], 'name_ar': row['name_ar'], 'icon': row['icon'], 'base_salary': row['base_salary']} for row in c.fetchall()]
+    c.execute("SELECT COUNT(*) FROM employees WHERE status = 'actif'")
+    total_emp = c.fetchone()[0]
+    cadres = c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'cadre'").fetchone()[0]
+    contracts = c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'contract'").fetchone()[0]
+    workers = total_emp - cadres - contracts
     conn.close()
-    
     stats = {
-        'count': len(employees_list),
+        'count': total_emp,
         'total_payroll': f"{total_net:,.0f}",
-        'avg_salary': f"{total_net/len(employees_list):,.0f}" if employees_list else "0"
+        'avg_salary': f"{total_net/total_emp:,.0f}" if total_emp else "0",
+        'cadres': cadres,
+        'workers': workers,
+        'contracts': contracts
     }
-    
-    return render_template_string(TEMPLATE, 
-                                  employees=employees_list, 
-                                  stats=stats, 
-                                  grades=grades,
-                                  user=user,
-                                  is_admin=is_admin)
+    return render_template_string(TEMPLATE, employees=employees_list, stats=stats, grades=grades, user=user, is_admin=is_admin)
 
 @app.route('/add', methods=['POST'])
 @admin_required
@@ -347,13 +506,16 @@ def add_employee():
     name = request.form['name']
     position = request.form.get('position', '')
     grade_id = int(request.form['grade_id'])
+    contract_type = request.form.get('contract_type', 'cadre')
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT base_salary FROM grades WHERE id = ?", (grade_id,))
     grade_row = c.fetchone()
     base_salary = grade_row['base_salary'] if grade_row else 0
-    c.execute('INSERT INTO employees (name, position, grade_id, base_salary, hire_date) VALUES (?,?,?,?,?)',
-              (name, position, grade_id, base_salary, datetime.now().strftime('%Y-%m-%d')))
+    code = f"EMP{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    c.execute('''INSERT INTO employees (code, name, position, grade_id, base_salary, contract_type, hire_date) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)''',
+              (code, name, position, grade_id, base_salary, contract_type, datetime.now().strftime('%Y-%m-%d')))
     conn.commit()
     conn.close()
     return redirect('/')
