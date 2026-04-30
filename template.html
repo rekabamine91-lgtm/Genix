@@ -4,26 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Genix Pro | نظام إدارة أجور الصحة</title>
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    
-    <!-- Three.js للعلم الترفرف -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
-            }
-        }
-    </script>
-
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Cairo', sans-serif; }
-
-        /* ===== المتغيرات ===== */
         :root {
             --primary-gradient: linear-gradient(135deg, #2563eb, #1e40af, #7c3aed);
             --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #e0e7ff 100%);
@@ -34,9 +19,7 @@
             --text-muted: #64748b;
             --card-bg: #ffffff;
             --input-bg: #f9fbfd;
-            --table-hover: rgba(37, 99, 235, 0.05);
         }
-
         body.dark {
             --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
             --surface: rgba(15, 23, 42, 0.85);
@@ -46,18 +29,9 @@
             --text-muted: #94a3b8;
             --card-bg: #1e293b;
             --input-bg: #334155;
-            --table-hover: rgba(37, 99, 235, 0.15);
         }
-
-        body {
-            background: var(--bg-gradient);
-            transition: all 0.3s ease;
-            min-height: 100vh;
-        }
-
+        body { background: var(--bg-gradient); transition: all 0.3s ease; min-height: 100vh; }
         .app-container { display: flex; position: relative; z-index: 10; }
-
-        /* ===== Sidebar ===== */
         .sidebar {
             width: 280px;
             background: var(--surface);
@@ -71,26 +45,11 @@
             flex-direction: column;
             justify-content: space-between;
         }
-        
         .logo { text-align: center; margin-bottom: 40px; }
         .logo h2 { font-size: 26px; font-weight: 800; background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
-        
-        /* العلم 3D */
-        .flag-3d-wrapper {
-            width: 100%;
-            height: 130px;
-            margin: 0 auto 15px;
-            position: relative;
-            border-radius: 16px;
-            overflow: hidden;
-        }
-        #flag-canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            border-radius: 12px;
-        }
-        
+        .flag-container { width: 100%; height: 130px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; }
+        .waving-flag { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)); animation: subtle-float 3s ease-in-out infinite; }
+        @keyframes subtle-float { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(1deg); } }
         .nav-item {
             display: flex;
             align-items: center;
@@ -103,389 +62,159 @@
             cursor: pointer;
         }
         .nav-item.active { background: var(--primary-gradient); color: white; }
-        .nav-item.active i, .nav-item.active span { color: white; }
-        
-        .copyright-sidebar {
-            margin-top: auto;
-            padding-top: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-muted);
-            border-top: 1px solid var(--border-glow);
-        }
+        .copyright-sidebar { margin-top: auto; padding-top: 20px; text-align: center; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-glow); }
         .developer { font-weight: 600; color: #2563eb; }
-
-        /* ===== Main Content ===== */
         .main-content { flex: 1; padding: 30px 40px; }
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 15px; }
-        .top-bar h1 { color: var(--text-primary); }
-        .top-bar p { color: var(--text-secondary); }
-        
-        /* Language Switcher */
-        .lang-switcher {
-            display: flex;
-            gap: 8px;
-            background: var(--surface);
-            padding: 6px;
-            border-radius: 50px;
-            border: 1px solid var(--border-glow);
-        }
-        .lang-btn {
-            padding: 6px 18px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            transition: all 0.2s;
-            color: var(--text-secondary);
-        }
+        .lang-switcher { display: flex; gap: 8px; background: var(--surface); padding: 6px; border-radius: 50px; border: 1px solid var(--border-glow); }
+        .lang-btn { padding: 6px 18px; border-radius: 40px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
         .lang-btn.active { background: var(--primary-gradient); color: white; }
-        .theme-toggle {
-            background: var(--surface);
-            padding: 8px 18px;
-            border-radius: 40px;
-            cursor: pointer;
-            border: 1px solid var(--border-glow);
-            color: var(--text-secondary);
-        }
-
-        /* ===== Stats Cards ===== */
+        .theme-toggle { background: var(--surface); padding: 8px 18px; border-radius: 40px; cursor: pointer; border: 1px solid var(--border-glow); color: var(--text-secondary); }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 40px; }
-        .stat-card {
-            background: var(--card-bg);
-            border-radius: 24px;
-            padding: 24px;
-            border: 1px solid var(--border-glow);
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        }
+        .stat-card { background: var(--card-bg); border-radius: 24px; padding: 24px; border: 1px solid var(--border-glow); transition: all 0.3s; position: relative; overflow: hidden; }
         .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--primary-gradient); }
         .stat-card:hover { transform: translateY(-4px); }
-        .stat-card .stat-icon i { color: var(--text-primary); }
-        .stat-card .stat-number { font-size: 2.2rem; font-weight: 800; color: var(--text-primary); }
+        .stat-number { font-size: 2.2rem; font-weight: 800; color: var(--text-primary); }
         .stat-card div:last-child { color: var(--text-secondary); font-size: 14px; margin-top: 8px; }
-        
-        /* ===== Forms ===== */
-        .form-card {
-            background: var(--card-bg);
-            border-radius: 24px;
-            padding: 28px;
-            margin-bottom: 35px;
-            border: 1px solid var(--border-glow);
-        }
+        .form-card { background: var(--card-bg); border-radius: 24px; padding: 28px; margin-bottom: 35px; border: 1px solid var(--border-glow); }
         .form-card h3 { color: var(--text-primary); margin-bottom: 16px; }
         .form-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
-        .form-grid input, .form-grid select {
-            flex: 1;
-            padding: 14px 18px;
-            border-radius: 16px;
-            border: 1px solid var(--border-glow);
-            background: var(--input-bg);
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-        .form-grid input::placeholder { color: var(--text-muted); }
-        .btn-primary {
-            background: var(--primary-gradient);
-            color: white;
-            border: none;
-            padding: 0 32px;
-            border-radius: 40px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-primary:hover { transform: scale(1.02); opacity: 0.9; }
-        
-        /* ===== Tables ===== */
+        .form-grid input, .form-grid select { flex: 1; padding: 14px 18px; border-radius: 16px; border: 1px solid var(--border-glow); background: var(--input-bg); color: var(--text-primary); }
+        .btn-primary { background: var(--primary-gradient); color: white; border: none; padding: 0 32px; border-radius: 40px; font-weight: 600; cursor: pointer; }
         .data-table { width: 100%; border-collapse: collapse; }
-        .data-table th { 
-            text-align: right; 
-            padding: 16px 12px; 
-            color: var(--text-secondary); 
-            border-bottom: 1px solid var(--border-glow);
-            font-weight: 600;
-        }
-        .data-table td { 
-            padding: 16px 12px; 
-            border-bottom: 1px solid var(--border-glow);
-            color: var(--text-primary);
-        }
-        .data-table td strong { color: var(--text-primary); }
-        .data-table td small { color: var(--text-muted); }
-        .data-table tbody tr:hover { background: var(--table-hover); }
-        .data-table .badge-sector { background: rgba(37,99,235,0.1); padding: 4px 12px; border-radius: 50px; color: var(--text-secondary); }
-        
-        .global-footer { 
-            margin-top: 40px; 
-            padding-top: 20px; 
-            text-align: center; 
-            border-top: 1px solid var(--border-glow); 
-            color: var(--text-muted); 
-            font-size: 13px; 
-        }
-        .global-footer a { color: var(--text-primary); text-decoration: none; }
-        
-        @media (max-width: 768px) { 
-            .sidebar { display: none; } 
-            .main-content { padding: 20px; } 
-            .stats-grid { grid-template-columns: 1fr; }
-        }
+        .data-table th { text-align: right; padding: 16px 12px; color: var(--text-secondary); border-bottom: 1px solid var(--border-glow); }
+        .data-table td { padding: 16px 12px; border-bottom: 1px solid var(--border-glow); color: var(--text-primary); }
+        .data-table tbody tr:hover { background: rgba(37,99,235,0.1); }
+        .badge-sector { background: rgba(37,99,235,0.1); padding: 4px 12px; border-radius: 50px; color: var(--text-secondary); }
+        .global-footer { margin-top: 40px; padding-top: 20px; text-align: center; border-top: 1px solid var(--border-glow); color: var(--text-muted); font-size: 13px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        @media (max-width: 768px) { .sidebar { display: none; } .main-content { padding: 20px; } .stats-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-
 <div class="app-container">
     <aside class="sidebar">
         <div>
-            <div class="flag-3d-wrapper">
-                <canvas id="flag-canvas"></canvas>
-            </div>
-            <div class="logo">
-                <h2><i class="fas fa-microscope"></i> <span data-key="app_name">Genix</span></h2>
-                <p style="font-size: 11px; text-align: center; color: var(--text-muted);"><span data-key="edition">Enterprise Edition</span></p>
-            </div>
+            <div class="flag-container"><img class="waving-flag" src="https://upload.wikimedia.org/wikipedia/commons/7/77/Flag_of_Algeria.svg" alt="علم الجزائر"></div>
+            <div class="logo"><h2><i class="fas fa-microscope"></i> <span data-key="app_name">Genix</span></h2><p style="font-size: 11px; text-align: center; color: var(--text-muted);"><span data-key="edition">Enterprise Edition</span></p></div>
             <nav>
-                <div class="nav-item active"><i class="fas fa-chart-line"></i> <span data-key="nav_dashboard">Dashboard</span></div>
-                <div class="nav-item"><i class="fas fa-users"></i> <span data-key="nav_employees">Employees</span></div>
-                <div class="nav-item"><i class="fas fa-file-invoice-dollar"></i> <span data-key="nav_payroll">Payroll</span></div>
-                <div class="nav-item"><i class="fas fa-chart-pie"></i> <span data-key="nav_reports">Reports</span></div>
-                <div class="nav-item"><i class="fas fa-gear"></i> <span data-key="nav_settings">Settings</span></div>
+                <div class="nav-item active" data-tab="dashboard"><i class="fas fa-chart-line"></i> <span data-key="nav_dashboard">Dashboard</span></div>
+                <div class="nav-item" data-tab="employees"><i class="fas fa-users"></i> <span data-key="nav_employees">Employees</span></div>
+                <div class="nav-item" data-tab="payroll"><i class="fas fa-file-invoice-dollar"></i> <span data-key="nav_payroll">Payroll</span></div>
+                <div class="nav-item" data-tab="reports"><i class="fas fa-chart-pie"></i> <span data-key="nav_reports">Reports</span></div>
+                <div class="nav-item" data-tab="settings"><i class="fas fa-gear"></i> <span data-key="nav_settings">Settings</span></div>
             </nav>
         </div>
-        <div class="copyright-sidebar">
-            <i class="fas fa-code"></i>
-            <p>Developed by <span class="developer">Rekab Amine</span></p>
-            <p>© 2025 All Rights Reserved</p>
-        </div>
+        <div class="copyright-sidebar"><i class="fas fa-code"></i><p>Developed by <span class="developer">Rekab Amine</span></p><p>© 2025 All Rights Reserved</p></div>
     </aside>
-
     <main class="main-content">
         <div class="top-bar">
-            <div>
-                <h1 style="font-size: 28px; font-weight: 700;"><span data-key="dashboard_title">Dashboard</span></h1>
-                <p><span data-key="welcome_msg">Welcome back, Admin</span></p>
-            </div>
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <div class="lang-switcher">
-                    <div class="lang-btn active" data-lang="ar">🇩🇿 العربية</div>
-                    <div class="lang-btn" data-lang="fr">🇫🇷 Français</div>
-                    <div class="lang-btn" data-lang="en">🇬🇧 English</div>
-                </div>
-                <div class="theme-toggle" onclick="toggleDarkMode()">
-                    <i class="fas fa-moon"></i> <span data-key="dark_mode">Dark</span>
-                </div>
+            <div><h1><span id="page-title">Dashboard</span></h1><p><span id="page-subtitle">Welcome back, Admin</span></p></div>
+            <div style="display: flex; gap: 12px;">
+                <div class="lang-switcher"><div class="lang-btn active" data-lang="ar">🇩🇿 العربية</div><div class="lang-btn" data-lang="fr">🇫🇷 Français</div><div class="lang-btn" data-lang="en">🇬🇧 English</div></div>
+                <div class="theme-toggle" onclick="toggleDarkMode()"><i class="fas fa-moon"></i> <span data-key="dark_mode">Dark</span></div>
             </div>
         </div>
 
-        <div class="stats-grid" data-aos="fade-up">
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-users fa-2x"></i></div><div class="stat-number">{{ stats.count }}</div><div data-key="total_employees">Total Employees</div></div>
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-money-bill-wave fa-2x"></i></div><div class="stat-number">{{ stats.total_payroll }} DZD</div><div data-key="total_payroll_label">Total Payroll</div></div>
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-chart-line fa-2x"></i></div><div class="stat-number">{{ stats.avg_salary }} DZD</div><div data-key="avg_salary_label">Average Salary</div></div>
-        </div>
-
-        <div class="form-card" data-aos="fade-up" data-aos-delay="100">
-            <h3><i class="fas fa-user-plus"></i> <span data-key="add_employee_title">Add New Employee</span></h3>
-            <form action="/add" method="post" class="form-grid">
-                <input type="text" name="name" placeholder="Full Name" required>
-                <input type="text" name="position" placeholder="Position">
-                <select name="grade_id" required>
-                    <option value="">-- Select Grade --</option>
-                    {% for grade in grades %}
-                    <option value="{{ grade.id }}">{{ grade.icon }} {{ grade.name_ar }} ({{ "%.0f"|format(grade.base_salary) }} DZD)</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="btn-primary"><span data-key="register_btn">Register</span> <i class="fas fa-arrow-right"></i></button>
-            </form>
-        </div>
-
-        <div class="form-card" data-aos="fade-up" data-aos-delay="200">
-            <h3><i class="fas fa-list-ul"></i> <span data-key="staff_dir_title">Staff Directory</span></h3>
-            <div style="overflow-x: auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr><th data-key="th_num">#</th><th data-key="th_name">Name</th><th data-key="th_grade">Grade</th><th data-key="th_sector">Sector</th><th data-key="th_base">Base Salary</th><th data-key="th_net">Net Salary</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                        {% for emp in employees %}
-                        <tr>
-                            <td>{{ loop.index }}</td>
-                            <td><strong>{{ emp.name }}</strong><br><small>{{ emp.position or '' }}</small></td>
-                            <td>{{ emp.grade_name }}</td>
-                            <td><span class="badge-sector">{{ emp.icon }} {{ emp.sector }}</span></td>
-                            <td>{{ "%.0f"|format(emp.base_salary) }} DZD</td>
-                            <td style="color:#059669; font-weight:700;">{{ "%.0f"|format(emp.net) }} DZD</td>
-                            <td><a href="/delete/{{ emp.id }}" style="color:#dc2626;" onclick="return confirm('Delete?')"><i class="fas fa-trash-alt"></i></a></td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="7" style="text-align:center; color: var(--text-muted);"><span data-key="no_employees">✨ No employees yet</span></td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <!-- تبويب Dashboard -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="stats-grid">
+                <div class="stat-card"><div><i class="fas fa-users fa-2x"></i></div><div class="stat-number">{{ stats.count }}</div><div data-key="total_employees">Total Employees</div></div>
+                <div class="stat-card"><div><i class="fas fa-money-bill-wave fa-2x"></i></div><div class="stat-number">{{ stats.total_payroll }} DZD</div><div data-key="total_payroll_label">Total Payroll</div></div>
+                <div class="stat-card"><div><i class="fas fa-chart-line fa-2x"></i></div><div class="stat-number">{{ stats.avg_salary }} DZD</div><div data-key="avg_salary_label">Average Salary</div></div>
+            </div>
+            <div class="form-card"><h3><i class="fas fa-user-plus"></i> <span data-key="add_employee_title">Add New Employee</span></h3>
+                <form action="/add" method="post" class="form-grid"><input type="text" name="name" placeholder="Full Name" required><input type="text" name="position" placeholder="Position"><select name="grade_id" required><option value="">-- Select Grade --</option>{% for grade in grades %}<option value="{{ grade.id }}">{{ grade.icon }} {{ grade.name_ar }} ({{ "%.0f"|format(grade.base_salary) }} DZD)</option>{% endfor %}</select><button type="submit" class="btn-primary"><span data-key="register_btn">Register</span> <i class="fas fa-arrow-right"></i></button></form>
+            </div>
+            <div class="form-card"><h3><i class="fas fa-list-ul"></i> <span data-key="staff_dir_title">Staff Directory</span></h3>
+                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th data-key="th_num">#</th><th data-key="th_name">Name</th><th data-key="th_grade">Grade</th><th data-key="th_sector">Sector</th><th data-key="th_base">Base Salary</th><th data-key="th_net">Net Salary</th><th></th></tr></thead><tbody>{% for emp in employees %}<tr><td>{{ loop.index }}</td><td><strong>{{ emp.name }}</strong><br><small>{{ emp.position or '' }}</small></td><td>{{ emp.grade_name }}</td><td><span class="badge-sector">{{ emp.icon }} {{ emp.sector }}</span></td><td>{{ "%.0f"|format(emp.base_salary) }} DZD</td><td style="color:#059669; font-weight:700;">{{ "%.0f"|format(emp.net) }} DZD</td><td><a href="/delete/{{ emp.id }}" style="color:#dc2626;" onclick="return confirm('Delete?')"><i class="fas fa-trash-alt"></i></a></td></tr>{% else %}<tr><td colspan="7" style="text-align:center;"><span data-key="no_employees">✨ No employees yet</span></td></tr>{% endfor %}</tbody></table></div>
             </div>
         </div>
 
-        <div class="global-footer">
-            <p><i class="fas fa-copyright"></i> 2025 <strong>Rekab Amine</strong> | <span data-key="footer_title">Genix Healthcare Payroll System v3.0</span> | <span data-key="rights">All Rights Reserved</span></p>
-            <p><span data-key="developed">Developed with</span> <i class="fas fa-heart" style="color: #dc2626;"></i> <span data-key="in_algeria">in Algeria 🇩🇿</span></p>
+        <!-- تبويب Employees (نفس المحتوى لكن يمكن تخصيصه لاحقاً) -->
+        <div id="tab-employees" class="tab-content">
+            <div class="form-card"><h3><i class="fas fa-user-plus"></i> <span data-key="add_employee_title">Add New Employee</span></h3>
+                <form action="/add" method="post" class="form-grid"><input type="text" name="name" placeholder="Full Name" required><input type="text" name="position" placeholder="Position"><select name="grade_id" required><option value="">-- Select Grade --</option>{% for grade in grades %}<option value="{{ grade.id }}">{{ grade.icon }} {{ grade.name_ar }} ({{ "%.0f"|format(grade.base_salary) }} DZD)</option>{% endfor %}</select><button type="submit" class="btn-primary"><span data-key="register_btn">Register</span> <i class="fas fa-arrow-right"></i></button></form>
+            </div>
+            <div class="form-card"><h3><i class="fas fa-list-ul"></i> <span data-key="staff_dir_title">Staff Directory</span></h3>
+                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th data-key="th_num">#</th><th data-key="th_name">Name</th><th data-key="th_grade">Grade</th><th data-key="th_sector">Sector</th><th data-key="th_base">Base Salary</th><th data-key="th_net">Net Salary</th><th></th></tr></thead><tbody>{% for emp in employees %}</tr><td>{{ loop.index }}</td><td><strong>{{ emp.name }}</strong><br><small>{{ emp.position or '' }}</small></td><td>{{ emp.grade_name }}</td><td><span class="badge-sector">{{ emp.icon }} {{ emp.sector }}</span></td><td>{{ "%.0f"|format(emp.base_salary) }} DZD</td><td style="color:#059669; font-weight:700;">{{ "%.0f"|format(emp.net) }} DZD</td><td><a href="/delete/{{ emp.id }}" style="color:#dc2626;" onclick="return confirm('Delete?')"><i class="fas fa-trash-alt"></i></a></td></tr>{% else %}<tr><td colspan="7" style="text-align:center;"><span data-key="no_employees">✨ No employees yet</span></td></tr>{% endfor %}</tbody></table></div>
+            </div>
         </div>
+
+        <!-- تبويب Payroll -->
+        <div id="tab-payroll" class="tab-content">
+            <div class="form-card"><h3><i class="fas fa-calendar-alt"></i> <span data-key="payroll_title">Monthly Payroll</span></h3>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;"><span data-key="payroll_desc">Generate and manage monthly payroll slips</span></p>
+                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th>Month</th><th>Year</th><th>Total Employees</th><th>Total Payroll</th><th>Action</th></tr></thead><tbody><tr><td colspan="5" style="text-align:center;"><span data-key="coming_soon">Payroll module coming soon - Generate first payslips after adding employees</span></td></tr></tbody></table></div>
+            </div>
+        </div>
+
+        <!-- تبويب Reports -->
+        <div id="tab-reports" class="tab-content">
+            <div class="form-card"><h3><i class="fas fa-chart-bar"></i> <span data-key="reports_title">Reports Center</span></h3>
+                <p style="color: var(--text-secondary); margin-bottom: 20px;"><span data-key="reports_desc">Export employee data and salary reports</span></p>
+                <div class="form-grid"><button class="btn-primary" onclick="alert('Excel export will be available soon')"><i class="fas fa-file-excel"></i> Export to Excel</button><button class="btn-primary" onclick="alert('PDF report will be available soon')"><i class="fas fa-file-pdf"></i> Export to PDF</button></div>
+            </div>
+        </div>
+
+        <!-- تبويب Settings -->
+        <div id="tab-settings" class="tab-content">
+            <div class="form-card"><h3><i class="fas fa-sliders-h"></i> <span data-key="settings_title">System Settings</span></h3>
+                <div class="form-grid"><div style="flex: 1;"><label><span data-key="preferred_lang">Preferred Language</span></label><select id="settings-lang" class="form-control" style="width:100%;"><option value="ar">العربية</option><option value="fr">Français</option><option value="en">English</option></select></div><div style="flex: 1;"><label><span data-key="dark_mode_setting">Dark Mode</span></label><select id="settings-theme" class="form-control" style="width:100%;"><option value="light">Light</option><option value="dark">Dark</option></select></div></div><hr><div class="form-grid"><button class="btn-primary" onclick="alert('Settings saved!')"><span data-key="save_settings">Save Settings</span></button></div>
+            </div>
+        </div>
+
+        <div class="global-footer"><p><i class="fas fa-copyright"></i> 2025 <strong>Rekab Amine</strong> | <span data-key="footer_title">Genix Healthcare Payroll System v3.0</span> | <span data-key="rights">All Rights Reserved</span></p><p><span data-key="developed">Developed with</span> <i class="fas fa-heart" style="color: #dc2626;"></i> <span data-key="in_algeria">in Algeria 🇩🇿</span></p></div>
     </main>
 </div>
 
-<script type="module">
-    import * as THREE from 'three';
-
-    // رسم العلم الجزائري
-    const canvasTex = document.createElement('canvas');
-    canvasTex.width = 1024;
-    canvasTex.height = 682;
-    const ctx = canvasTex.getContext('2d');
-
-    const drawFlag = () => {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvasTex.width, canvasTex.height);
-        ctx.fillStyle = '#006633';
-        ctx.fillRect(0, 0, canvasTex.width / 2, canvasTex.height);
-        ctx.fillStyle = '#D21034';
-        ctx.beginPath();
-        ctx.arc(canvasTex.width * 0.65, canvasTex.height / 2, canvasTex.height * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(canvasTex.width * 0.57, canvasTex.height / 2, canvasTex.height * 0.18, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#D21034';
-        const centerX = canvasTex.width * 0.68;
-        const centerY = canvasTex.height / 2;
-        const outerR = canvasTex.height * 0.09;
-        let rot = Math.PI / 2 * 3;
-        const step = Math.PI / 5;
-        ctx.beginPath();
-        for (let i = 0; i < 5; i++) {
-            const x1 = centerX + Math.cos(rot) * outerR;
-            const y1 = centerY + Math.sin(rot) * outerR;
-            ctx.lineTo(x1, y1);
-            rot += step;
-            const x2 = centerX + Math.cos(rot) * (outerR * 0.4);
-            const y2 = centerY + Math.sin(rot) * (outerR * 0.4);
-            ctx.lineTo(x2, y2);
-            rot += step;
-        }
-        ctx.closePath();
-        ctx.fill();
-    };
-    drawFlag();
-    const flagTexture = new THREE.CanvasTexture(canvasTex);
-
-    const width = 2.4, height = 1.6, segments = 32;
-    const geometry = new THREE.PlaneGeometry(width, height, segments, segments);
-    const material = new THREE.MeshStandardMaterial({ map: flagTexture, side: THREE.DoubleSide, roughness: 0.4, metalness: 0.1 });
-    const flagMesh = new THREE.Mesh(geometry, material);
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, 1.2, 0.1, 1000);
-    camera.position.set(0, 0, 3.2);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(260, 150);
-    renderer.setClearColor(0x000000, 0);
-    const container = document.getElementById('flag-canvas');
-    if(container) container.appendChild(renderer.domElement);
-
-    const ambientLight = new THREE.AmbientLight(0x404060);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(1, 2, 1);
-    scene.add(dirLight);
-    scene.add(flagMesh);
-
-    let time = 0;
-    function animate() {
-        requestAnimationFrame(animate);
-        time += 0.025;
-        const positions = geometry.attributes.position.array;
-        for (let i = 0; i <= segments; i++) {
-            for (let j = 0; j <= segments; j++) {
-                const index = (i * (segments + 1) + j) * 3;
-                const x = positions[index];
-                const z = Math.sin(i * 0.45 + time * 3) * 0.045 + Math.cos(j * 0.3 + time * 2.2) * 0.02;
-                positions[index + 2] = z;
-            }
-        }
-        geometry.attributes.position.needsUpdate = true;
-        geometry.computeVertexNormals();
-        flagMesh.rotation.y = Math.sin(time * 0.6) * 0.05;
-        flagMesh.rotation.z = Math.sin(time * 0.7) * 0.02;
-        renderer.render(scene, camera);
-    }
-    animate();
-    setInterval(() => flagTexture.needsUpdate = true, 30000);
-</script>
-
 <script>
-    AOS.init({ duration: 800, once: true });
+    // نظام التبويب (Tab Switching)
+    const tabs = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const pageTitle = document.getElementById('page-title');
+    const pageSubtitle = document.getElementById('page-subtitle');
 
+    const titles = { dashboard: 'Dashboard', employees: 'Employees', payroll: 'Payroll', reports: 'Reports', settings: 'Settings' };
+    const subtitles = { dashboard: 'Welcome back, Admin', employees: 'Manage employee records', payroll: 'Monthly payroll management', reports: 'Generate and export reports', settings: 'Configure system preferences' };
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabId = tab.getAttribute('data-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            tabContents.forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            if(titles[tabId]) pageTitle.innerText = titles[tabId];
+            if(subtitles[tabId]) pageSubtitle.innerText = subtitles[tabId];
+        });
+    });
+
+    // نظام الترجمة
     const translations = {
-        ar: {
-            app_name: "Genix", edition: "نسخة المؤسسات", nav_dashboard: "لوحة القيادة", nav_employees: "الموظفون",
-            nav_payroll: "الرواتب", nav_reports: "التقارير", nav_settings: "الإعدادات", dashboard_title: "لوحة القيادة",
-            welcome_msg: "مرحباً بعودتك أيها المدير", dark_mode: "مظلم", total_employees: "إجمالي الموظفين",
-            total_payroll_label: "كتلة الأجور", avg_salary_label: "متوسط الراتب", add_employee_title: "إضافة موظف جديد",
-            register_btn: "تسجيل", staff_dir_title: "دليل الموظفين", th_num: "#", th_name: "الاسم",
-            th_grade: "الرتبة", th_sector: "القطاع", th_base: "الأجر القاعدي", th_net: "الأجر الصافي",
-            no_employees: "✨ لا يوجد موظفون بعد", footer_title: "نظام أجور الصحة Genix", rights: "جميع الحقوق محفوظة",
-            developed: "تم التطوير بـ", in_algeria: "في الجزائر 🇩🇿"
-        },
-        fr: {
-            app_name: "Genix", edition: "Édition Entreprise", nav_dashboard: "Tableau de bord", nav_employees: "Employés",
-            nav_payroll: "Paie", nav_reports: "Rapports", nav_settings: "Paramètres", dashboard_title: "Tableau de bord",
-            welcome_msg: "Bon retour, Admin", dark_mode: "Sombre", total_employees: "Total employés",
-            total_payroll_label: "Masse salariale", avg_salary_label: "Salaire moyen", add_employee_title: "Ajouter employé",
-            register_btn: "Enregistrer", staff_dir_title: "Annuaire", th_name: "Nom", th_grade: "Grade",
-            th_sector: "Secteur", th_base: "Salaire de base", th_net: "Salaire net",
-            no_employees: "✨ Aucun employé", footer_title: "Système de Paie Santé Genix", rights: "Tous droits réservés",
-            developed: "Développé avec", in_algeria: "en Algérie 🇩🇿"
-        },
-        en: {
-            app_name: "Genix", edition: "Enterprise Edition", nav_dashboard: "Dashboard", nav_employees: "Employees",
-            nav_payroll: "Payroll", nav_reports: "Reports", nav_settings: "Settings", dashboard_title: "Dashboard",
-            welcome_msg: "Welcome back, Admin", dark_mode: "Dark", total_employees: "Total Employees",
-            total_payroll_label: "Total Payroll", avg_salary_label: "Average Salary", add_employee_title: "Add Employee",
-            register_btn: "Register", staff_dir_title: "Staff Directory", th_name: "Name", th_grade: "Grade",
-            th_sector: "Sector", th_base: "Base Salary", th_net: "Net Salary", no_employees: "✨ No employees yet",
-            footer_title: "Genix Healthcare Payroll System", rights: "All Rights Reserved",
-            developed: "Developed with", in_algeria: "in Algeria 🇩🇿"
-        }
+        ar: { app_name: "Genix", edition: "نسخة المؤسسات", nav_dashboard: "لوحة القيادة", nav_employees: "الموظفون", nav_payroll: "الرواتب", nav_reports: "التقارير", nav_settings: "الإعدادات", dashboard_title: "لوحة القيادة", welcome_msg: "مرحباً بعودتك أيها المدير", dark_mode: "مظلم", total_employees: "إجمالي الموظفين", total_payroll_label: "كتلة الأجور", avg_salary_label: "متوسط الراتب", add_employee_title: "إضافة موظف جديد", register_btn: "تسجيل", staff_dir_title: "دليل الموظفين", th_num: "#", th_name: "الاسم", th_grade: "الرتبة", th_sector: "القطاع", th_base: "الأجر القاعدي", th_net: "الأجر الصافي", no_employees: "✨ لا يوجد موظفون بعد", footer_title: "نظام أجور الصحة Genix", rights: "جميع الحقوق محفوظة", developed: "تم التطوير بـ", in_algeria: "في الجزائر 🇩🇿", payroll_title: "الرواتب الشهرية", payroll_desc: "إنشاء وإدارة كشوف الرواتب الشهرية", reports_title: "مركز التقارير", reports_desc: "تصدير بيانات الموظفين وتقارير الرواتب", settings_title: "إعدادات النظام", preferred_lang: "اللغة المفضلة", dark_mode_setting: "الوضع المظلم", save_settings: "حفظ الإعدادات", coming_soon: "قريباً - وحدات الرواتب قيد التطوير" },
+        fr: { app_name: "Genix", edition: "Édition Entreprise", nav_dashboard: "Tableau de bord", nav_employees: "Employés", nav_payroll: "Paie", nav_reports: "Rapports", nav_settings: "Paramètres", dashboard_title: "Tableau de bord", welcome_msg: "Bon retour, Admin", dark_mode: "Sombre", total_employees: "Total employés", total_payroll_label: "Masse salariale", avg_salary_label: "Salaire moyen", add_employee_title: "Ajouter employé", register_btn: "Enregistrer", staff_dir_title: "Annuaire", th_name: "Nom", th_grade: "Grade", th_sector: "Secteur", th_base: "Salaire de base", th_net: "Salaire net", no_employees: "✨ Aucun employé", footer_title: "Système de Paie Santé Genix", rights: "Tous droits réservés", developed: "Développé avec", in_algeria: "en Algérie 🇩🇿", payroll_title: "Paie mensuelle", payroll_desc: "Gérer les bulletins de paie", reports_title: "Centre de rapports", reports_desc: "Exporter les données", settings_title: "Paramètres", preferred_lang: "Langue préférée", dark_mode_setting: "Mode sombre", save_settings: "Enregistrer", coming_soon: "Bientôt disponible" },
+        en: { app_name: "Genix", edition: "Enterprise Edition", nav_dashboard: "Dashboard", nav_employees: "Employees", nav_payroll: "Payroll", nav_reports: "Reports", nav_settings: "Settings", dashboard_title: "Dashboard", welcome_msg: "Welcome back, Admin", dark_mode: "Dark", total_employees: "Total Employees", total_payroll_label: "Total Payroll", avg_salary_label: "Average Salary", add_employee_title: "Add Employee", register_btn: "Register", staff_dir_title: "Staff Directory", th_name: "Name", th_grade: "Grade", th_sector: "Sector", th_base: "Base Salary", th_net: "Net Salary", no_employees: "✨ No employees yet", footer_title: "Genix Healthcare Payroll System", rights: "All Rights Reserved", developed: "Developed with", in_algeria: "in Algeria 🇩🇿", payroll_title: "Monthly Payroll", payroll_desc: "Generate and manage payroll slips", reports_title: "Reports Center", reports_desc: "Export employee data and reports", settings_title: "System Settings", preferred_lang: "Preferred Language", dark_mode_setting: "Dark Mode", save_settings: "Save Settings", coming_soon: "Coming soon" }
     };
 
     function setLanguage(lang) {
-        document.querySelectorAll('[data-key]').forEach(el => {
-            const key = el.getAttribute('data-key');
-            if(translations[lang] && translations[lang][key]) {
-                if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[lang][key];
-                else el.innerText = translations[lang][key];
-            }
-        });
+        document.querySelectorAll('[data-key]').forEach(el => { const key = el.getAttribute('data-key'); if(translations[lang] && translations[lang][key]) { if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[lang][key]; else el.innerText = translations[lang][key]; } });
         localStorage.setItem('genix_lang', lang);
         document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`.lang-btn[data-lang="${lang}"]`).classList.add('active');
+        if(document.getElementById('settings-lang')) document.getElementById('settings-lang').value = lang;
     }
 
-    function toggleDarkMode() {
-        document.body.classList.toggle('dark');
-        localStorage.setItem('dark', document.body.classList.contains('dark'));
-    }
+    function toggleDarkMode() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')); }
 
     const savedLang = localStorage.getItem('genix_lang') || 'ar';
     setLanguage(savedLang);
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', () => setLanguage(btn.getAttribute('data-lang')));
-    });
-    
+    document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => setLanguage(btn.getAttribute('data-lang'))));
     if(localStorage.getItem('dark') === 'true') document.body.classList.add('dark');
-    
-    console.log("%c© 2025 Rekab Amine | Genix Pro - Waving Flag Edition", "color: #2563eb; font-size: 14px; font-weight: bold;");
+    if(document.getElementById('settings-lang')) document.getElementById('settings-lang').addEventListener('change', (e) => setLanguage(e.target.value));
+    if(document.getElementById('settings-theme')) document.getElementById('settings-theme').addEventListener('change', (e) => { if(e.target.value === 'dark') document.body.classList.add('dark'); else document.body.classList.remove('dark'); localStorage.setItem('dark', e.target.value === 'dark'); });
+    console.log("%c© 2025 Rekab Amine | Genix Pro - Full Interactive Edition", "color: #2563eb; font-size: 14px; font-weight: bold;");
 </script>
 </body>
 </html>
