@@ -5,9 +5,12 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-def init_db():
+# دالة إنشاء قاعدة البيانات (ستتصل تلقائياً عند أول طلب)
+def get_db():
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
+    
+    # إنشاء جدول الموظفين إذا لم يكن موجوداً
     c.execute('''
         CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,6 +20,7 @@ def init_db():
         )
     ''')
     
+    # إضافة بيانات تجريبية إذا كان الجدول فارغاً
     c.execute("SELECT COUNT(*) FROM employees")
     if c.fetchone()[0] == 0:
         sample_data = [
@@ -25,15 +29,16 @@ def init_db():
             ('سارة علي', 'مساعد إداري', 21000),
         ]
         c.executemany("INSERT INTO employees (name, position, salary) VALUES (?, ?, ?)", sample_data)
+        conn.commit()
     
-    conn.commit()
-    conn.close()
+    return conn
 
 def calculate_net_salary(salary):
     irg = salary * 0.15 if salary > 30000 else 0
     cnap = salary * 0.09
     return salary - irg - cnap
 
+# قالب HTML
 TEMPLATE = '''
 <!DOCTYPE html>
 <html dir="rtl">
@@ -93,28 +98,30 @@ TEMPLATE = '''
         
         <div class="card">
             <h3>📋 قائمة الموظفين</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>الاسم</th>
-                        <th>المنصب</th>
-                        <th>الراتب الأساسي</th>
-                        <th>الراتب الصافي</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for emp in employees %}
-                    <tr>
-                        <td>{{ emp.name }}</td>
-                        <td>{{ emp.position or '-' }}</td>
-                        <td>{{ "%.2f"|format(emp.salary) }} دج</td>
-                        <td style="color: green;">{{ "%.2f"|format(emp.net) }} دج</td>
-                        <td><a href="/delete/{{ emp.id }}" class="delete" onclick="return confirm('حذف؟')">🗑️</a></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>الاسم</th>
+                            <th>المنصب</th>
+                            <th>الراتب الأساسي</th>
+                            <th>الراتب الصافي</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employees %}
+                        <tr>
+                            <td>{{ emp.name }}</td>
+                            <td>{{ emp.position or '-' }}</td>
+                            <td>{{ "%.2f"|format(emp.salary) }} دج</td>
+                            <td style="color: green;">{{ "%.2f"|format(emp.net) }} دج</td>
+                            <td><a href="/delete/{{ emp.id }}" class="delete" onclick="return confirm('حذف؟')">🗑️</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </body>
@@ -123,7 +130,7 @@ TEMPLATE = '''
 
 @app.route('/')
 def index():
-    conn = sqlite3.connect('database.db')
+    conn = get_db()
     c = conn.cursor()
     c.execute("SELECT id, name, position, salary FROM employees")
     rows = c.fetchall()
@@ -149,23 +156,28 @@ def add_employee():
     name = request.form['name']
     position = request.form.get('position', '')
     salary = float(request.form['salary'])
-    conn = sqlite3.connect('database.db')
+    
+    conn = get_db()
     c = conn.cursor()
     c.execute("INSERT INTO employees (name, position, salary) VALUES (?, ?, ?)", (name, position, salary))
     conn.commit()
     conn.close()
+    
     return redirect('/')
 
 @app.route('/delete/<int:emp_id>')
 def delete_employee(emp_id):
-    conn = sqlite3.connect('database.db')
+    conn = get_db()
     c = conn.cursor()
     c.execute("DELETE FROM employees WHERE id = ?", (emp_id,))
     conn.commit()
     conn.close()
     return redirect('/')
 
+@app.route('/health')
+def health():
+    return jsonify({'status': 'healthy'})
+
 if __name__ == '__main__':
-    init_db()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
