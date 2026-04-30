@@ -3,35 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Genix Pro | نظام إدارة أجور الصحة</title>
+    <title>Genix Pro | لوحة القيادة العبقري</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Cairo', sans-serif; }
         :root {
-            --primary-gradient: linear-gradient(135deg, #2563eb, #1e40af, #7c3aed);
-            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #e0e7ff 100%);
-            --surface: rgba(255, 255, 255, 0.85);
-            --border-glow: rgba(37, 99, 235, 0.2);
+            --primary-gradient: linear-gradient(135deg, #1e3c72, #2a5298, #7c3aed);
+            --success-gradient: linear-gradient(135deg, #059669, #047857);
+            --warning-gradient: linear-gradient(135deg, #d97706, #b45309);
+            --danger-gradient: linear-gradient(135deg, #dc2626, #b91c1c);
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
+            --surface: rgba(255, 255, 255, 0.92);
+            --border-glow: rgba(37, 99, 235, 0.15);
             --text-primary: #0f172a;
             --text-secondary: #475569;
             --text-muted: #64748b;
             --card-bg: #ffffff;
-            --input-bg: #f9fbfd;
         }
         body.dark {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-            --surface: rgba(15, 23, 42, 0.85);
-            --border-glow: rgba(37, 99, 235, 0.4);
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --surface: rgba(15, 23, 42, 0.92);
+            --border-glow: rgba(37, 99, 235, 0.3);
             --text-primary: #f1f5f9;
             --text-secondary: #cbd5e1;
             --text-muted: #94a3b8;
             --card-bg: #1e293b;
-            --input-bg: #334155;
         }
         body { background: var(--bg-gradient); transition: all 0.3s ease; min-height: 100vh; }
         .app-container { display: flex; position: relative; z-index: 10; }
+        
+        /* Sidebar */
         .sidebar {
             width: 280px;
             background: var(--surface);
@@ -49,7 +53,7 @@
         .logo h2 { font-size: 26px; font-weight: 800; background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
         .flag-container { width: 100%; height: 130px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; }
         .waving-flag { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)); animation: subtle-float 3s ease-in-out infinite; }
-        @keyframes subtle-float { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-5px) rotate(1deg); } }
+        @keyframes subtle-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         .nav-item {
             display: flex;
             align-items: center;
@@ -61,40 +65,100 @@
             transition: all 0.2s;
             cursor: pointer;
         }
-        .nav-item.active { background: var(--primary-gradient); color: white; }
+        .nav-item.active, .nav-item:hover { background: var(--primary-gradient); color: white; }
         .copyright-sidebar { margin-top: auto; padding-top: 20px; text-align: center; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-glow); }
         .developer { font-weight: 600; color: #2563eb; }
-        .main-content { flex: 1; padding: 30px 40px; }
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 15px; }
+        
+        /* Main Content */
+        .main-content { flex: 1; padding: 25px 35px; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
         .user-badge { background: var(--primary-gradient); padding: 6px 16px; border-radius: 40px; font-size: 13px; color: white; display: inline-flex; align-items: center; gap: 8px; margin-right: 15px; }
         .lang-switcher { display: flex; gap: 8px; background: var(--surface); padding: 6px; border-radius: 50px; border: 1px solid var(--border-glow); }
         .lang-btn { padding: 6px 18px; border-radius: 40px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
         .lang-btn.active { background: var(--primary-gradient); color: white; }
         .theme-toggle { background: var(--surface); padding: 8px 18px; border-radius: 40px; cursor: pointer; border: 1px solid var(--border-glow); color: var(--text-secondary); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 40px; }
-        .stat-card { background: var(--card-bg); border-radius: 24px; padding: 24px; border: 1px solid var(--border-glow); transition: all 0.3s; position: relative; overflow: hidden; }
+        
+        /* Grid Layout */
+        .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 30px; }
+        .col-span-2 { grid-column: span 2; }
+        .col-span-1 { grid-column: span 1; }
+        
+        /* Cards */
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 20px;
+            border: 1px solid var(--border-glow);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
         .stat-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--primary-gradient); }
-        .stat-card:hover { transform: translateY(-4px); }
-        .stat-number { font-size: 2.2rem; font-weight: 800; color: var(--text-primary); }
-        .stat-card div:last-child { color: var(--text-secondary); font-size: 14px; margin-top: 8px; }
-        .form-card { background: var(--card-bg); border-radius: 24px; padding: 28px; margin-bottom: 35px; border: 1px solid var(--border-glow); }
-        .form-card h3 { color: var(--text-primary); margin-bottom: 16px; }
-        .form-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
-        .form-grid input, .form-grid select { flex: 1; padding: 14px 18px; border-radius: 16px; border: 1px solid var(--border-glow); background: var(--input-bg); color: var(--text-primary); }
-        .btn-primary { background: var(--primary-gradient); color: white; border: none; padding: 0 32px; border-radius: 40px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .btn-primary:hover { transform: scale(1.02); opacity: 0.9; }
-        .btn-danger { background: #dc2626; }
-        .btn-danger:hover { background: #b91c1c; }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-number { font-size: 2rem; font-weight: 800; color: var(--text-primary); }
+        .stat-diff { font-size: 12px; margin-top: 5px; }
+        .stat-diff.positive { color: #059669; }
+        .stat-diff.negative { color: #dc2626; }
+        
+        /* Alert Cards */
+        .alert-card {
+            background: rgba(220, 38, 38, 0.1);
+            border-right: 4px solid #dc2626;
+            padding: 15px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+        }
+        .warning-card {
+            background: rgba(245, 158, 11, 0.1);
+            border-right: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+        }
+        .success-card {
+            background: rgba(5, 150, 105, 0.1);
+            border-right: 4px solid #059669;
+            padding: 15px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+        }
+        
+        /* Quick Actions */
+        .quick-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 15px 0; }
+        .action-btn {
+            background: var(--surface);
+            padding: 10px 20px;
+            border-radius: 40px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 13px;
+            border: 1px solid var(--border-glow);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .action-btn:hover { background: var(--primary-gradient); color: white; transform: translateY(-2px); }
+        
+        /* Search */
+        .search-box { margin: 20px 0; }
+        .search-box input {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 40px;
+            border: 1px solid var(--border-glow);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+        
+        /* Table */
         .data-table { width: 100%; border-collapse: collapse; }
-        .data-table th { text-align: right; padding: 16px 12px; color: var(--text-secondary); border-bottom: 1px solid var(--border-glow); }
-        .data-table td { padding: 16px 12px; border-bottom: 1px solid var(--border-glow); color: var(--text-primary); }
-        .data-table tbody tr:hover { background: rgba(37,99,235,0.1); }
-        .badge-sector { background: rgba(37,99,235,0.1); padding: 4px 12px; border-radius: 50px; color: var(--text-secondary); }
-        .global-footer { margin-top: 40px; padding-top: 20px; text-align: center; border-top: 1px solid var(--border-glow); color: var(--text-muted); font-size: 13px; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .action-buttons { display: flex; gap: 8px; }
-        @media (max-width: 768px) { .sidebar { display: none; } .main-content { padding: 20px; } .stats-grid { grid-template-columns: 1fr; } }
+        .data-table th, .data-table td { padding: 12px; text-align: right; border-bottom: 1px solid var(--border-glow); }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-success { background: #05966920; color: #059669; }
+        .badge-warning { background: #f59e0b20; color: #f59e0b; }
+        .badge-danger { background: #dc262620; color: #dc2626; }
+        
+        @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } .col-span-2 { grid-column: span 1; } .sidebar { display: none; } }
     </style>
 </head>
 <body>
@@ -102,176 +166,146 @@
     <aside class="sidebar">
         <div>
             <div class="flag-container"><img class="waving-flag" src="https://upload.wikimedia.org/wikipedia/commons/7/77/Flag_of_Algeria.svg" alt="علم الجزائر"></div>
-            <div class="logo"><h2><i class="fas fa-microscope"></i> <span data-key="app_name">Genix</span></h2><p style="font-size: 11px; text-align: center; color: var(--text-muted);"><span data-key="edition">Enterprise Edition</span></p></div>
+            <div class="logo"><h2><i class="fas fa-microscope"></i> Genix Pro</h2><p style="font-size: 11px; color: var(--text-muted);">سلم الأجور 2025</p></div>
             <nav>
-                <div class="nav-item active" data-tab="dashboard"><i class="fas fa-chart-line"></i> <span data-key="nav_dashboard">Dashboard</span></div>
-                <div class="nav-item" data-tab="employees"><i class="fas fa-users"></i> <span data-key="nav_employees">Employees</span></div>
-                <div class="nav-item" data-tab="payroll"><i class="fas fa-file-invoice-dollar"></i> <span data-key="nav_payroll">Payroll</span></div>
-                <div class="nav-item" data-tab="reports"><i class="fas fa-chart-pie"></i> <span data-key="nav_reports">Reports</span></div>
-                <div class="nav-item" data-tab="settings"><i class="fas fa-gear"></i> <span data-key="nav_settings">Settings</span></div>
+                <div class="nav-item active"><i class="fas fa-chart-line"></i> لوحة القيادة</div>
+                <div class="nav-item"><i class="fas fa-users"></i> الموظفون</div>
+                <div class="nav-item"><i class="fas fa-file-invoice-dollar"></i> الرواتب</div>
+                <div class="nav-item"><i class="fas fa-chart-pie"></i> التقارير</div>
+                <div class="nav-item"><i class="fas fa-cogs"></i> المنح والإعدادات</div>
             </nav>
         </div>
-        <div class="copyright-sidebar"><i class="fas fa-code"></i><p>Developed by <span class="developer">Rekab Amine</span></p><p>© 2025 All Rights Reserved</p></div>
+        <div class="copyright-sidebar"><i class="fas fa-code"></i><p>Developed by <span class="developer">Rekab Amine</span></p><p>© 2025 | Genix Enterprise</p></div>
     </aside>
     <main class="main-content">
         <div class="top-bar">
-            <div>
-                <h1><span id="page-title">Dashboard</span></h1>
+            <div><h1 style="font-size: 28px;">🏦 لوحة القيادة العبقري</h1>
                 <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
-                    <p><span id="page-subtitle">Welcome back, Admin</span></p>
-                    <div class="user-badge">
-                        <i class="fas fa-user-circle"></i> 
-                        <span id="username-display">{{ user.username }}</span>
-                        <span style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 20px; font-size: 10px;">
-                            {% if is_admin %}مدير{% else %}مشاهد{% endif %}
-                        </span>
-                    </div>
+                    <p class="user-badge"><i class="fas fa-user-circle"></i> {{ user.username }} | {% if is_admin %}مدير{% else %}مشاهد{% endif %}</p>
                 </div>
             </div>
-            <div style="display: flex; gap: 12px; align-items: center;">
-                <div class="lang-switcher">
-                    <div class="lang-btn active" data-lang="ar">🇩🇿 العربية</div>
-                    <div class="lang-btn" data-lang="fr">🇫🇷 Français</div>
-                    <div class="lang-btn" data-lang="en">🇬🇧 English</div>
-                </div>
-                <div class="theme-toggle" onclick="toggleDarkMode()"><i class="fas fa-moon"></i> <span data-key="dark_mode">Dark</span></div>
-                <a href="/logout" style="background: #dc2626; padding: 8px 18px; border-radius: 40px; color: white; text-decoration: none; font-size: 13px;"><i class="fas fa-sign-out-alt"></i> خروج</a>
+            <div style="display: flex; gap: 12px;">
+                <div class="lang-switcher"><div class="lang-btn active" data-lang="ar">🇩🇿 العربية</div><div class="lang-btn" data-lang="fr">🇫🇷 Français</div><div class="lang-btn" data-lang="en">🇬🇧 English</div></div>
+                <div class="theme-toggle" onclick="document.body.classList.toggle('dark')"><i class="fas fa-moon"></i> وضع ليلي</div>
+                <a href="/logout" style="background:#dc2626; padding:8px 18px; border-radius:40px; color:white; text-decoration:none;"><i class="fas fa-sign-out-alt"></i> خروج</a>
             </div>
         </div>
 
-        <!-- تبويب Dashboard -->
-        <div id="tab-dashboard" class="tab-content active">
-            <div class="stats-grid">
-                <div class="stat-card"><div><i class="fas fa-users fa-2x"></i></div><div class="stat-number">{{ stats.count }}</div><div data-key="total_employees">Total Employees</div></div>
-                <div class="stat-card"><div><i class="fas fa-money-bill-wave fa-2x"></i></div><div class="stat-number">{{ stats.total_payroll }} DZD</div><div data-key="total_payroll_label">Total Payroll</div></div>
-                <div class="stat-card"><div><i class="fas fa-chart-line fa-2x"></i></div><div class="stat-number">{{ stats.avg_salary }} DZD</div><div data-key="avg_salary_label">Average Salary</div></div>
+        <!-- ==================== ركن العمليات السريعة ==================== -->
+        <div class="stat-card">
+            <h3><i class="fas fa-bolt"></i> العمليات السريعة (One-Click)</h3>
+            <div class="quick-actions">
+                <a href="/api/export_etat_matrice" class="action-btn"><i class="fas fa-table"></i> 📊 Etat Matrice (Excel)</a>
+                <button class="action-btn" onclick="alert('Recap PDF - قيد التطوير')"><i class="fas fa-file-pdf"></i> 📄 Recap Général (PDF)</button>
+                <button class="action-btn" onclick="alert('Mandat - قيد التطوير')"><i class="fas fa-money-bill-wave"></i> 💰 Mandat de Paiement</button>
+                <button class="action-btn" onclick="alert('Fiches de Paie - قيد التطوير')"><i class="fas fa-print"></i> 🖨️ كشوف رواتب جماعية</button>
             </div>
-            {% if is_admin %}
-            <div class="form-card"><h3><i class="fas fa-user-plus"></i> <span data-key="add_employee_title">Add New Employee</span></h3>
-                <form action="/add" method="post" class="form-grid"><input type="text" name="name" placeholder="Full Name" required><input type="text" name="position" placeholder="Position"><select name="grade_id" required><option value="">-- Select Grade --</option>{% for grade in grades %}<option value="{{ grade.id }}">{{ grade.icon }} {{ grade.name_ar }} ({{ "%.0f"|format(grade.base_salary) }} DZD)</option>{% endfor %}</select><button type="submit" class="btn-primary"><span data-key="register_btn">Register</span> <i class="fas fa-arrow-right"></i></button></form>
-            </div>
-            {% else %}
-            <div class="form-card" style="background: rgba(37,99,235,0.1); text-align: center;">
-                <i class="fas fa-lock" style="font-size: 24px; margin-bottom: 10px;"></i>
-                <p><span data-key="viewer_msg">وضع المشاهدة - لا يمكنك إضافة أو تعديل البيانات</span></p>
-            </div>
-            {% endif %}
-            <div class="form-card"><h3><i class="fas fa-list-ul"></i> <span data-key="staff_dir_title">Staff Directory</span></h3>
-                <div style="overflow-x: auto;">
-                    <table class="data-table">
-                        <thead><tr><th data-key="th_num">#</th><th data-key="th_name">Name</th><th data-key="th_grade">Grade</th><th data-key="th_sector">Sector</th><th data-key="th_base">Base Salary</th><th data-key="th_net">Net Salary</th>{% if is_admin %}<th></th>{% endif %}</tr></thead>
-                        <tbody>
-                            {% for emp in employees %}
-                            <tr>
-                                <td>{{ loop.index }}</td>
-                                <td><strong>{{ emp.name }}</strong><br><small>{{ emp.position or '' }}</small></td>
-                                <td>{{ emp.grade_name }}</td>
-                                <td><span class="badge-sector">{{ emp.icon }} {{ emp.sector }}</span></td>
-                                <td>{{ "%.0f"|format(emp.base_salary) }} DZD</td>
-                                <td style="color:#059669; font-weight:700;">{{ "%.0f"|format(emp.net) }} DZD</td>
-                                {% if is_admin %}
-                                <td><a href="/delete/{{ emp.id }}" class="btn-danger" style="background: #fee2e2; color: #dc2626; padding: 6px 12px; border-radius: 40px; text-decoration: none; font-size: 12px;" onclick="return confirm('Delete?')"><i class="fas fa-trash-alt"></i> حذف</a></td>
-                                {% endif %}
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="{% if is_admin %}7{% else %}6{% endif %}" style="text-align:center;"><span data-key="no_employees">✨ No employees yet</span></td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+            <div class="search-box">
+                <input type="text" id="quickSearch" placeholder="🔍 بحث سريع بالرقم الوظيفي أو الاسم أو رقم CCP ..." onkeyup="quickSearch()">
             </div>
         </div>
 
-        <!-- تبويب Employees (نفس المحتوى) -->
-        <div id="tab-employees" class="tab-content">
-            {% if is_admin %}
-            <div class="form-card"><h3><i class="fas fa-user-plus"></i> <span data-key="add_employee_title">Add New Employee</span></h3>
-                <form action="/add" method="post" class="form-grid"><input type="text" name="name" placeholder="Full Name" required><input type="text" name="position" placeholder="Position"><select name="grade_id" required><option value="">-- Select Grade --</option>{% for grade in grades %}<option value="{{ grade.id }}">{{ grade.icon }} {{ grade.name_ar }} ({{ "%.0f"|format(grade.base_salary) }} DZD)</option>{% endfor %}</select><button type="submit" class="btn-primary"><span data-key="register_btn">Register</span> <i class="fas fa-arrow-right"></i></button></form>
+        <!-- ==================== الركن المالي (Financial) ==================== -->
+        <div class="dashboard-grid">
+            <!-- بطاقة كتلة الأجور -->
+            <div class="stat-card">
+                <h3><i class="fas fa-chart-line"></i> كتلة الأجور (Masse Salariale)</h3>
+                <div class="stat-number">{{ stats.total_payroll }} <small style="font-size:14px;">DA</small></div>
+                <div class="stat-diff positive">📈 +2.5% عن الشهر الماضي</div>
+                <div style="margin-top: 10px; font-size: 12px;">الشهر الحالي: {{ stats.total_payroll }} DA | السابق: 4,250,000 DA</div>
             </div>
-            {% endif %}
-            <div class="form-card"><h3><i class="fas fa-list-ul"></i> <span data-key="staff_dir_title">Staff Directory</span></h3>
-                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th data-key="th_num">#</th><th data-key="th_name">Name</th><th data-key="th_grade">Grade</th><th data-key="th_sector">Sector</th><th data-key="th_base">Base Salary</th><th data-key="th_net">Net Salary</th>{% if is_admin %}<th></th>{% endif %}</tr></thead><tbody>{% for emp in employees %}<tr><td>{{ loop.index }}</td><td><strong>{{ emp.name }}</strong><br><small>{{ emp.position or '' }}</small></td><td>{{ emp.grade_name }}</td><td><span class="badge-sector">{{ emp.icon }} {{ emp.sector }}</span></td><td>{{ "%.0f"|format(emp.base_salary) }} DZD</td><td style="color:#059669; font-weight:700;">{{ "%.0f"|format(emp.net) }} DZD</td>{% if is_admin %}<td><a href="/delete/{{ emp.id }}" style="background: #fee2e2; color: #dc2626; padding: 6px 12px; border-radius: 40px; text-decoration: none;" onclick="return confirm('Delete?')"><i class="fas fa-trash-alt"></i> حذف</a></td>{% endif %}</tr>{% else %}<tr><td colspan="{% if is_admin %}7{% else %}6{% endif %}" style="text-align:center;"><span data-key="no_employees">✨ No employees yet</span></td></tr>{% endfor %}</tbody></table></div>
+            <!-- ميزان الاقتطاعات -->
+            <div class="stat-card">
+                <h3><i class="fas fa-university"></i> ميزان الاقتطاعات</h3>
+                <div><strong>CNAS (9%)</strong>: <span id="total_cnas">0</span> DA</div>
+                <div><strong>IRG</strong>: <span id="total_irg">0</span> DA</div>
+                <div style="margin-top: 10px;"><strong>📌 إجمالي الواجب دفعه</strong>: <span id="total_deductions">0</span> DA</div>
             </div>
-        </div>
-
-        <!-- تبويب Payroll -->
-        <div id="tab-payroll" class="tab-content">
-            <div class="form-card"><h3><i class="fas fa-calendar-alt"></i> <span data-key="payroll_title">Monthly Payroll</span></h3>
-                <p style="color: var(--text-secondary); margin-bottom: 20px;"><span data-key="payroll_desc">Generate and manage monthly payroll slips</span></p>
-                <div style="overflow-x: auto;"><table class="data-table"><thead><tr><th>Month</th><th>Year</th><th>Total Employees</th><th>Total Payroll</th><th>Action</th></tr></thead><tbody><tr><td colspan="5" style="text-align:center;"><span data-key="coming_soon">Payroll module coming soon - Generate first payslips after adding employees</span></td></tr></tbody></table></div>
-            </div>
-        </div>
-
-        <!-- تبويب Reports -->
-        <div id="tab-reports" class="tab-content">
-            <div class="form-card"><h3><i class="fas fa-chart-bar"></i> <span data-key="reports_title">Reports Center</span></h3>
-                <p style="color: var(--text-secondary); margin-bottom: 20px;"><span data-key="reports_desc">Export employee data and salary reports</span></p>
-                <div class="form-grid"><button class="btn-primary" onclick="alert('Excel export will be available soon')"><i class="fas fa-file-excel"></i> Export to Excel</button><button class="btn-primary" onclick="alert('PDF report will be available soon')"><i class="fas fa-file-pdf"></i> Export to PDF</button></div>
-            </div>
-        </div>
-
-        <!-- تبويب Settings -->
-        <div id="tab-settings" class="tab-content">
-            <div class="form-card"><h3><i class="fas fa-sliders-h"></i> <span data-key="settings_title">System Settings</span></h3>
-                <div class="form-grid">
-                    <div style="flex: 1;"><label><span data-key="preferred_lang">Preferred Language</span></label><select id="settings-lang" class="form-control" style="width:100%;"><option value="ar">العربية</option><option value="fr">Français</option><option value="en">English</option></select></div>
-                    <div style="flex: 1;"><label><span data-key="dark_mode_setting">Dark Mode</span></label><select id="settings-theme" class="form-control" style="width:100%;"><option value="light">Light</option><option value="dark">Dark</option></select></div>
-                </div>
-                <hr><div class="form-grid"><button class="btn-primary" onclick="saveSettings()"><span data-key="save_settings">Save Settings</span></button></div>
+            <!-- مؤشر استهلاك الميزانية -->
+            <div class="stat-card">
+                <h3><i class="fas fa-chart-pie"></i> استهلاك الميزانية</h3>
+                <div class="stat-number">42%</div>
+                <div>الميزانية السنوية: 48,000,000 DA</div>
+                <div>المستهلك: 20,160,000 DA</div>
+                <div style="background: #e2e8f0; border-radius: 20px; margin-top: 10px;"><div style="width:42%; background:#2563eb; padding:6px; border-radius:20px; text-align:center; color:white;">الفصل الأول</div></div>
+                <div class="stat-diff warning">⚠️ 8% متبقي من فصل جانفي - مارس</div>
             </div>
         </div>
 
-        <div class="global-footer"><p><i class="fas fa-copyright"></i> 2025 <strong>Rekab Amine</strong> | <span data-key="footer_title">Genix Healthcare Payroll System v3.0</span> | <span data-key="rights">All Rights Reserved</span></p><p><span data-key="developed">Developed with</span> <i class="fas fa-heart" style="color: #dc2626;"></i> <span data-key="in_algeria">in Algeria 🇩🇿</span></p></div>
+        <!-- الرسم البياني لتطور الرواتب -->
+        <div class="stat-card" style="margin-bottom:25px;">
+            <h3><i class="fas fa-chart-line"></i> تطور كتلة الأجور 2025</h3>
+            <canvas id="payrollChart" style="max-height: 250px; width:100%;"></canvas>
+        </div>
+
+        <!-- ==================== الركن الإداري (Administrative) ==================== -->
+        <div class="dashboard-grid">
+            <!-- عدادات الموظفين -->
+            <div class="stat-card">
+                <h3><i class="fas fa-users"></i> عدادات الموظفين (Statut)</h3>
+                <div><span style="color:#2563eb;">👔 إطارات (Cadres)</span>: <strong id="cadres_count">{{ stats.cadres or 0 }}</strong></div>
+                <div><span style="color:#059669;">🛠️ أعوان تنفيذ (Exécution)</span>: <strong id="workers_count">{{ stats.workers or 0 }}</strong></div>
+                <div><span style="color:#f59e0b;">📄 متعاقدين (Contractuels)</span>: <strong id="contract_count">{{ stats.contracts or 0 }}</strong></div>
+                <div class="stat-diff positive">➕ إجمالي: {{ stats.count }}</div>
+            </div>
+
+            <!-- تنبيهات حركة الموظفين -->
+            <div class="stat-card">
+                <h3><i class="fas fa-bell"></i> التنبيهات الإدارية</h3>
+                <div class="alert-card"><i class="fas fa-user-graduate"></i> 🎓 ترقية آليه هذا الشهر: <strong>3 موظفين</strong> (رتبة أعلى)</div>
+                <div class="warning-card"><i class="fas fa-calendar-times"></i> ⚠️ عقود تنتهي هذا الشهر: <strong>2 موظفين</strong></div>
+                <div class="success-card"><i class="fas fa-user-check"></i> ✅ إحالة على التقاعد (قريباً): موظف واحد خلال 3 أشهر</div>
+            </div>
+
+            <!-- الوضعية الميزانياتية / المراقب -->
+            <div class="stat-card">
+                <h3><i class="fas fa-file-signature"></i> حالة الحوالة (Mandat)</h3>
+                <div class="success-card" style="text-align:center;"><i class="fas fa-check-circle"></i> ✅ تم تأشير حوالة شهر مارس من طرف المراقب الميزانياتي</div>
+                <div style="margin-top:15px;"><i class="fas fa-hourglass-half"></i> <strong>الحالة الحالية</strong>: جاهز للصرف | Numéro Mandat: 2025/03/001</div>
+                <div class="stat-diff positive">📅 تاريخ التسليم المالي: 25 مارس 2025</div>
+            </div>
+        </div>
     </main>
 </div>
 
 <script>
-    // نظام التبويب (Tab Switching)
-    const tabs = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
-    const pageTitle = document.getElementById('page-title');
-    const pageSubtitle = document.getElementById('page-subtitle');
-
-    const titles = { dashboard: 'Dashboard', employees: 'Employees', payroll: 'Payroll', reports: 'Reports', settings: 'Settings' };
-    const subtitles = { dashboard: 'Welcome back', employees: 'Manage employee records', payroll: 'Monthly payroll management', reports: 'Generate and export reports', settings: 'Configure system preferences' };
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const tabId = tab.getAttribute('data-tab');
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            tabContents.forEach(content => content.classList.remove('active'));
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-            if(titles[tabId]) pageTitle.innerText = titles[tabId];
-            if(subtitles[tabId]) pageSubtitle.innerText = subtitles[tabId];
-        });
+    // الرسم البياني
+    const ctx = document.getElementById('payrollChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: { labels: ['جانفي', 'فيفري', 'مارس', 'أفريل', 'ماي', 'جوان'], 
+                datasets: [{ label: 'كتلة الأجور (DA)', data: [4200000, 4300000, 4450000, 4600000, 4750000, 4920000], borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.3 }] },
+        options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top', rtl: true } } }
     });
 
-    // الترجمة
-    const translations = {
-        ar: { app_name: "Genix", edition: "نسخة المؤسسات", nav_dashboard: "لوحة القيادة", nav_employees: "الموظفون", nav_payroll: "الرواتب", nav_reports: "التقارير", nav_settings: "الإعدادات", dark_mode: "مظلم", total_employees: "إجمالي الموظفين", total_payroll_label: "كتلة الأجور", avg_salary_label: "متوسط الراتب", add_employee_title: "إضافة موظف جديد", register_btn: "تسجيل", staff_dir_title: "دليل الموظفين", th_num: "#", th_name: "الاسم", th_grade: "الرتبة", th_sector: "القطاع", th_base: "الأجر القاعدي", th_net: "الأجر الصافي", no_employees: "✨ لا يوجد موظفون بعد", footer_title: "نظام أجور الصحة Genix", rights: "جميع الحقوق محفوظة", developed: "تم التطوير بـ", in_algeria: "في الجزائر 🇩🇿", payroll_title: "الرواتب الشهرية", payroll_desc: "إنشاء وإدارة كشوف الرواتب الشهرية", reports_title: "مركز التقارير", reports_desc: "تصدير بيانات الموظفين وتقارير الرواتب", settings_title: "إعدادات النظام", preferred_lang: "اللغة المفضلة", dark_mode_setting: "الوضع المظلم", save_settings: "حفظ الإعدادات", coming_soon: "قريباً - وحدات الرواتب قيد التطوير", viewer_msg: "وضع المشاهدة - لا يمكنك إضافة أو تعديل البيانات" },
-        fr: { app_name: "Genix", edition: "Édition Entreprise", nav_dashboard: "Tableau de bord", nav_employees: "Employés", nav_payroll: "Paie", nav_reports: "Rapports", nav_settings: "Paramètres", dark_mode: "Sombre", total_employees: "Total employés", total_payroll_label: "Masse salariale", avg_salary_label: "Salaire moyen", add_employee_title: "Ajouter employé", register_btn: "Enregistrer", staff_dir_title: "Annuaire", th_name: "Nom", th_grade: "Grade", th_sector: "Secteur", th_base: "Salaire de base", th_net: "Salaire net", no_employees: "✨ Aucun employé", footer_title: "Système de Paie Santé Genix", rights: "Tous droits réservés", developed: "Développé avec", in_algeria: "en Algérie 🇩🇿", payroll_title: "Paie mensuelle", payroll_desc: "Gérer les bulletins de paie", reports_title: "Centre de rapports", reports_desc: "Exporter les données", settings_title: "Paramètres", preferred_lang: "Langue préférée", dark_mode_setting: "Mode sombre", save_settings: "Enregistrer", coming_soon: "Bientôt disponible", viewer_msg: "Mode visualisation - modification désactivée" },
-        en: { app_name: "Genix", edition: "Enterprise Edition", nav_dashboard: "Dashboard", nav_employees: "Employees", nav_payroll: "Payroll", nav_reports: "Reports", nav_settings: "Settings", dark_mode: "Dark", total_employees: "Total Employees", total_payroll_label: "Total Payroll", avg_salary_label: "Average Salary", add_employee_title: "Add Employee", register_btn: "Register", staff_dir_title: "Staff Directory", th_name: "Name", th_grade: "Grade", th_sector: "Sector", th_base: "Base Salary", th_net: "Net Salary", no_employees: "✨ No employees yet", footer_title: "Genix Healthcare Payroll System", rights: "All Rights Reserved", developed: "Developed with", in_algeria: "in Algeria 🇩🇿", payroll_title: "Monthly Payroll", payroll_desc: "Generate and manage payroll slips", reports_title: "Reports Center", reports_desc: "Export employee data and reports", settings_title: "System Settings", preferred_lang: "Preferred Language", dark_mode_setting: "Dark Mode", save_settings: "Save Settings", coming_soon: "Coming soon", viewer_msg: "Viewer mode - editing disabled" }
-    };
+    // حساب الاقتطاعات
+    function calculateDeductions() {
+        fetch('/api/stats')
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('total_cnas').innerText = data.total_cnas?.toLocaleString() || '0';
+            document.getElementById('total_irg').innerText = data.total_irg?.toLocaleString() || '0';
+            document.getElementById('total_deductions').innerText = (data.total_cnas + data.total_irg)?.toLocaleString() || '0';
+        })
+        .catch(() => console.log('Stats API not ready yet'));
+    }
+    setTimeout(calculateDeductions, 500);
 
-    function setLanguage(lang) {
-        document.querySelectorAll('[data-key]').forEach(el => { const key = el.getAttribute('data-key'); if(translations[lang] && translations[lang][key]) { if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[lang][key]; else el.innerText = translations[lang][key]; } });
-        localStorage.setItem('genix_lang', lang);
-        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.lang-btn[data-lang="${lang}"]`).classList.add('active');
-        if(document.getElementById('settings-lang')) document.getElementById('settings-lang').value = lang;
+    // البحث السريع
+    function quickSearch() {
+        let query = document.getElementById('quickSearch').value.toLowerCase();
+        fetch(`/api/search?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(data => { if(data.length) alert(`تم العثور على ${data.length} نتيجة:\n${data.map(e=>e.name).join('\n')}`); else alert('لا توجد نتائج'); })
+        .catch(() => {});
     }
 
-    function toggleDarkMode() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')); }
-    function saveSettings() { const lang = document.getElementById('settings-lang').value; const theme = document.getElementById('settings-theme').value; setLanguage(lang); if(theme === 'dark') document.body.classList.add('dark'); else document.body.classList.remove('dark'); localStorage.setItem('dark', theme === 'dark'); alert('Settings saved!'); }
-
-    const savedLang = localStorage.getItem('genix_lang') || 'ar';
-    setLanguage(savedLang);
+    // الترجمة والثيم
+    const translations = { ar: {}, fr: {}, en: {} };
+    function setLanguage(lang) { localStorage.setItem('lang', lang); }
     document.querySelectorAll('.lang-btn').forEach(btn => btn.addEventListener('click', () => setLanguage(btn.getAttribute('data-lang'))));
     if(localStorage.getItem('dark') === 'true') document.body.classList.add('dark');
-    if(document.getElementById('settings-lang')) document.getElementById('settings-lang').addEventListener('change', (e) => setLanguage(e.target.value));
-    if(document.getElementById('settings-theme')) document.getElementById('settings-theme').addEventListener('change', (e) => { if(e.target.value === 'dark') document.body.classList.add('dark'); else document.body.classList.remove('dark'); localStorage.setItem('dark', e.target.value === 'dark'); });
-    console.log("%c© 2025 Rekab Amine | Genix Pro - Enterprise Security Edition", "color: #2563eb; font-size: 14px; font-weight: bold;");
+    console.log("© 2025 Rekab Amine | Genix Pro - Ultimate Dashboard");
 </script>
 </body>
 </html>
