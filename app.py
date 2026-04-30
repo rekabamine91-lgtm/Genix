@@ -3,13 +3,27 @@ import sqlite3
 import os
 import hashlib
 import secrets
-import pandas as pd
 import json
 from datetime import datetime
 from functools import wraps
 from io import BytesIO
-import arabic_reshaper
-from bidi.algorithm import get_display
+
+# تفادي خطأ pandas
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    print("⚠️ Pandas not installed. Excel import/export disabled.")
+
+# تفادي خطأ arabic_reshaper
+try:
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+    ARABIC_AVAILABLE = True
+except ImportError:
+    ARABIC_AVAILABLE = False
+    print("⚠️ Arabic reshaping not installed.")
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(32)
@@ -73,6 +87,8 @@ def get_current_user():
 def init_database():
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
+    
+    # جدول الرتب
     c.execute('''
         CREATE TABLE IF NOT EXISTS grades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,6 +100,8 @@ def init_database():
             icon TEXT
         )
     ''')
+    
+    # جدول المنح
     c.execute('''
         CREATE TABLE IF NOT EXISTS allowances (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -95,6 +113,8 @@ def init_database():
             is_active BOOLEAN DEFAULT 1
         )
     ''')
+    
+    # جدول الموظفين
     c.execute('''
         CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,6 +131,8 @@ def init_database():
             FOREIGN KEY (grade_id) REFERENCES grades(id)
         )
     ''')
+    
+    # جدول الرواتب المؤرشفة
     c.execute('''
         CREATE TABLE IF NOT EXISTS payroll_archive (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,6 +153,7 @@ def init_database():
         )
     ''')
     
+    # إضافة الرتب الأساسية
     default_grades = [
         ('طبيب مختص', 'Médecin spécialiste', 'طبي', 180000, 1, '🩺'),
         ('طبيب عام', 'Médecin généraliste', 'طبي', 120000, 2, '👨‍⚕️'),
@@ -144,6 +167,7 @@ def init_database():
         c.execute('''INSERT OR IGNORE INTO grades (name_ar, name_fr, category, base_salary, "order", icon) 
                     VALUES (?, ?, ?, ?, ?, ?)''', grade)
     
+    # إضافة منح افتراضية
     default_allowances = [
         ('101', 'منحة الخبرة', "Prime d'expérience", 0.15, 1, 1),
         ('102', 'منحة السكن', 'Prime logement', 5000, 0, 1),
@@ -154,6 +178,7 @@ def init_database():
     for allowance in default_allowances:
         c.execute('''INSERT OR IGNORE INTO allowances (code, name_ar, name_fr, amount, is_percentage, is_active) 
                     VALUES (?, ?, ?, ?, ?, ?)''', allowance)
+    
     conn.commit()
     conn.close()
 
@@ -161,8 +186,8 @@ def get_db():
     try:
         init_database()
         init_users()
-    except:
-        pass
+    except Exception as e:
+        print(f"Database init error: {e}")
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row
     return conn
@@ -212,64 +237,11 @@ def calculate_net_salary(base_salary, family=0, regional=0):
 
 # ==================== API الاستيراد والتصدير ====================
 
-@app.route('/api/import_excel', methods=['POST'])
-@admin_required
-def import_excel():
-    try:
-        file = request.files.get('file')
-        if not file:
-            return jsonify({'error': 'No file uploaded'}), 400
-        df = pd.read_excel(file)
-        conn = get_db()
-        c = conn.cursor()
-        imported = 0
-        errors = []
-        column_mapping = {
-            'name': ['الاسم', 'الاسم الكامل', 'Name', 'Nom'],
-            'code': ['الرقم', 'رقم التسجيل', 'Code', 'Matricule'],
-            'position': ['المنصب', 'الرتبة', 'Position', 'Poste'],
-            'base_salary': ['الراتب', 'الأجر', 'Salary', 'Salaire'],
-            'family_allowance': ['منحة عائلية', 'Famille'],
-            'regional_allowance': ['منحة المنطقة', 'Region']
-        }
-        detected = {}
-        for key, possible_names in column_mapping.items():
-            for col in df.columns:
-                if any(name in str(col) for name in possible_names):
-                    detected[key] = col
-                    break
-        if 'name' not in detected:
-            return jsonify({'error': 'Could not detect name column'}), 400
-        for idx, row in df.iterrows():
-            try:
-                name = str(row[detected['name']])
-                code = str(row[detected.get('code', 'CODE')]) if detected.get('code') else f"EMP{idx+1:04d}"
-                position = str(row[detected.get('position', '')]) if detected.get('position') else ''
-                base_salary = float(row[detected.get('base_salary', '')]) if detected.get('base_salary') and pd.notna(row[detected.get('base_salary')]) else 50000
-                family = float(row[detected.get('family_allowance', '')]) if detected.get('family_allowance') and pd.notna(row[detected.get('family_allowance')]) else 0
-                regional = float(row[detected.get('regional_allowance', '')]) if detected.get('regional_allowance') and pd.notna(row[detected.get('regional_allowance')]) else 0
-                grade_id = 1
-                if position:
-                    c.execute("SELECT id FROM grades WHERE name_ar LIKE ? OR name_fr LIKE ?", (f'%{position}%', f'%{position}%'))
-                    grade = c.fetchone()
-                    if grade:
-                        grade_id = grade['id']
-                c.execute('''INSERT OR REPLACE INTO employees 
-                            (code, name, position, grade_id, base_salary, family_allowance, regional_allowance, hire_date) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                          (code, name, position, grade_id, base_salary, family, regional, datetime.now().strftime('%Y-%m-%d')))
-                imported += 1
-            except Exception as e:
-                errors.append(f"Row {idx+2}: {str(e)}")
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True, 'imported': imported, 'errors': errors, 'total_rows': len(df)})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/export_etat_matrice')
 @admin_required
 def export_etat_matrice():
+    if not PANDAS_AVAILABLE:
+        return "Pandas not available", 500
     conn = get_db()
     c = conn.cursor()
     c.execute('''
@@ -312,13 +284,13 @@ def api_stats():
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT COUNT(*) FROM employees WHERE status = 'actif'")
-    total_employees = c.fetchone()[0]
+    total_employees = c.fetchone()[0] or 0
     c.execute("SELECT SUM(base_salary) FROM employees WHERE status = 'actif'")
     total_payroll = c.fetchone()[0] or 0
     c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'cadre'")
-    cadres = c.fetchone()[0]
+    cadres = c.fetchone()[0] or 0
     c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'contract'")
-    contracts = c.fetchone()[0]
+    contracts = c.fetchone()[0] or 0
     workers = total_employees - cadres - contracts
     conn.close()
     return jsonify({
@@ -453,51 +425,64 @@ with open('template.html', 'r', encoding='utf-8') as f:
 def index():
     user = get_current_user()
     is_admin = user['role'] == 'admin'
+    
     conn = get_db()
     c = conn.cursor()
+    
     c.execute('''
         SELECT e.id, e.code, e.name, e.position, e.base_salary, e.family_allowance, e.regional_allowance,
-               g.name_ar as grade_name, g.sector, g.icon, g.base_salary as grade_salary, e.contract_type
+               g.name_ar as grade_name, g.icon, g.base_salary as grade_salary, e.contract_type
         FROM employees e
         JOIN grades g ON e.grade_id = g.id
         WHERE e.status = 'actif'
         ORDER BY g."order", e.name
     ''')
     rows = c.fetchall()
+    
     employees_list = []
     total_net = 0
     for row in rows:
-        salary = row['base_salary'] if row['base_salary'] > 0 else row['grade_salary']
-        res = calculate_net_salary(salary, row['family_allowance'], row['regional_allowance'])
+        salary = row['base_salary'] if row['base_salary'] and row['base_salary'] > 0 else row['grade_salary']
+        res = calculate_net_salary(salary or 0, row['family_allowance'] or 0, row['regional_allowance'] or 0)
         net = res['net']
         total_net += net
         employees_list.append({
             'id': row['id'],
             'code': row['code'],
             'name': row['name'],
-            'position': row['position'],
-            'grade_name': row['grade_name'],
-            'icon': row['icon'],
-            'base_salary': salary,
+            'position': row['position'] or '',
+            'grade_name': row['grade_name'] or '',
+            'icon': row['icon'] or '👤',
+            'base_salary': salary or 0,
             'net': net,
-            'contract_type': row['contract_type']
+            'contract_type': row['contract_type'] or 'cadre'
         })
+    
     c.execute("SELECT id, name_ar, icon, base_salary FROM grades ORDER BY \"order\"")
     grades = [{'id': row['id'], 'name_ar': row['name_ar'], 'icon': row['icon'], 'base_salary': row['base_salary']} for row in c.fetchall()]
+    
     c.execute("SELECT COUNT(*) FROM employees WHERE status = 'actif'")
-    total_emp = c.fetchone()[0]
-    cadres = c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'cadre'").fetchone()[0]
-    contracts = c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'contract'").fetchone()[0]
+    total_emp = c.fetchone()[0] or 0
+    
+    c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'cadre'")
+    cadres = c.fetchone()[0] or 0
+    
+    c.execute("SELECT COUNT(*) FROM employees WHERE contract_type = 'contract'")
+    contracts = c.fetchone()[0] or 0
+    
     workers = total_emp - cadres - contracts
+    
     conn.close()
+    
     stats = {
         'count': total_emp,
-        'total_payroll': f"{total_net:,.0f}",
+        'total_payroll': f"{total_net:,.0f}" if total_net else "0",
         'avg_salary': f"{total_net/total_emp:,.0f}" if total_emp else "0",
         'cadres': cadres,
         'workers': workers,
         'contracts': contracts
     }
+    
     return render_template_string(TEMPLATE, employees=employees_list, stats=stats, grades=grades, user=user, is_admin=is_admin)
 
 @app.route('/add', methods=['POST'])
@@ -507,11 +492,13 @@ def add_employee():
     position = request.form.get('position', '')
     grade_id = int(request.form['grade_id'])
     contract_type = request.form.get('contract_type', 'cadre')
+    
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT base_salary FROM grades WHERE id = ?", (grade_id,))
     grade_row = c.fetchone()
-    base_salary = grade_row['base_salary'] if grade_row else 0
+    base_salary = grade_row['base_salary'] if grade_row else 50000
+    
     code = f"EMP{datetime.now().strftime('%Y%m%d%H%M%S')}"
     c.execute('''INSERT INTO employees (code, name, position, grade_id, base_salary, contract_type, hire_date) 
                  VALUES (?, ?, ?, ?, ?, ?, ?)''',
@@ -532,7 +519,7 @@ def delete_employee(emp_id):
 
 @app.route('/health')
 def health():
-    return jsonify({'status': 'running'})
+    return jsonify({'status': 'running', 'pandas': PANDAS_AVAILABLE})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
