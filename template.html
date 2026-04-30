@@ -8,15 +8,11 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    
-    <!-- AOS Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     
-    <!-- Three.js -->
+    <!-- Three.js Core -->
     <script type="importmap">
         {
             "imports": {
@@ -26,12 +22,7 @@
     </script>
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', 'Cairo', sans-serif;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Cairo', sans-serif; }
 
         :root {
             --primary-gradient: linear-gradient(135deg, #2563eb, #1e40af, #7c3aed);
@@ -74,12 +65,25 @@
         .logo { text-align: center; margin-bottom: 40px; }
         .logo h2 { font-size: 26px; font-weight: 800; background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
         
-        /* Flag 3D Container */
-        .flag-3d-container {
-            width: 100px;
-            height: 100px;
+        /* Flag Container */
+        .flag-3d-wrapper {
+            width: 100%;
+            height: 120px;
             margin: 0 auto 15px;
             cursor: pointer;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border-radius: 16px;
+        }
+        #flag-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         
         .nav-item {
@@ -127,10 +131,7 @@
             transition: all 0.2s;
             color: var(--text-secondary);
         }
-        .lang-btn.active {
-            background: var(--primary-gradient);
-            color: white;
-        }
+        .lang-btn.active { background: var(--primary-gradient); color: white; }
         .theme-toggle {
             background: var(--surface);
             padding: 8px 18px;
@@ -196,7 +197,9 @@
 <div class="app-container">
     <aside class="sidebar">
         <div>
-            <div class="flag-3d-container" id="flag-container"></div>
+            <div class="flag-3d-wrapper">
+                <canvas id="flag-canvas"></canvas>
+            </div>
             <div class="logo">
                 <h2><i class="fas fa-microscope"></i> <span data-key="app_name">Genix</span></h2>
                 <p style="font-size: 11px; text-align: center; color: var(--text-secondary);"><span data-key="edition">Enterprise Edition</span></p>
@@ -234,13 +237,13 @@
             </div>
         </div>
 
-        <div class="stats-grid">
+        <div class="stats-grid" data-aos="fade-up">
             <div class="stat-card"><div class="stat-icon"><i class="fas fa-users fa-2x"></i></div><div class="stat-number">{{ stats.count }}</div><div data-key="total_employees">Total Employees</div></div>
             <div class="stat-card"><div class="stat-icon"><i class="fas fa-money-bill-wave fa-2x"></i></div><div class="stat-number">{{ stats.total_payroll }} DZD</div><div data-key="total_payroll_label">Total Payroll</div></div>
             <div class="stat-card"><div class="stat-icon"><i class="fas fa-chart-line fa-2x"></i></div><div class="stat-number">{{ stats.avg_salary }} DZD</div><div data-key="avg_salary_label">Average Salary</div></div>
         </div>
 
-        <div class="form-card">
+        <div class="form-card" data-aos="fade-up" data-aos-delay="100">
             <h3><i class="fas fa-user-plus"></i> <span data-key="add_employee_title">Add New Employee</span></h3>
             <form action="/add" method="post" class="form-grid">
                 <input type="text" name="name" placeholder="Full Name" required>
@@ -255,7 +258,7 @@
             </form>
         </div>
 
-        <div class="form-card">
+        <div class="form-card" data-aos="fade-up" data-aos-delay="200">
             <h3><i class="fas fa-list-ul"></i> <span data-key="staff_dir_title">Staff Directory</span></h3>
             <div style="overflow-x: auto;">
                 <table class="data-table">
@@ -280,77 +283,144 @@
 
 <script type="module">
     import * as THREE from 'three';
-    
-    // العلم الجزائري 3D
-    const container = document.getElementById('flag-container');
-    if(container) {
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ alpha: true });
-        renderer.setSize(100, 100);
-        container.appendChild(renderer.domElement);
-        
-        const geometry = new THREE.BoxGeometry(1.2, 0.8, 0.1);
-        const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 341;
-        const ctx = canvas.getContext('2d');
-        
-        const drawFlag = () => {
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#006633';
-            ctx.fillRect(0, 0, canvas.width * 0.5, canvas.height);
-            ctx.beginPath();
-            ctx.moveTo(canvas.width * 0.75, canvas.height * 0.5);
-            ctx.lineTo(canvas.width * 0.9, canvas.height * 0.3);
-            ctx.lineTo(canvas.width * 0.9, canvas.height * 0.7);
-            ctx.fill();
-            ctx.fillStyle = '#D21034';
-            ctx.beginPath();
-            ctx.moveTo(canvas.width * 0.27, canvas.height * 0.5);
-            ctx.lineTo(canvas.width * 0.12, canvas.height * 0.3);
-            ctx.lineTo(canvas.width * 0.12, canvas.height * 0.7);
-            ctx.fill();
-            ctx.fillStyle = '#D21034';
-            ctx.beginPath();
-            ctx.arc(canvas.width * 0.5, canvas.height * 0.5, canvas.height * 0.15, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(canvas.width * 0.5, canvas.height * 0.5, canvas.height * 0.1, 0, 2 * Math.PI);
-            ctx.fill();
-            texture.needsUpdate = true;
-        };
-        
-        const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.MeshStandardMaterial({ map: texture });
-        const flag = new THREE.Mesh(geometry, material);
-        scene.add(flag);
-        
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(1, 1, 1);
-        scene.add(light);
-        scene.add(new THREE.AmbientLight(0x404040));
-        
-        camera.position.z = 1.5;
-        
-        drawFlag();
-        
-        function animate() {
-            requestAnimationFrame(animate);
-            flag.rotation.y += 0.01;
-            flag.rotation.x = Math.sin(Date.now() * 0.002) * 0.2;
-            renderer.render(scene, camera);
+
+    // --- رسم نسيج العلم الجزائري (Texture عالية الجودة) ---
+    const canvasTex = document.createElement('canvas');
+    canvasTex.width = 1024;
+    canvasTex.height = 682; // نسبة 3:2
+    const ctx = canvasTex.getContext('2d');
+
+    const drawAlgerianFlag = () => {
+        // خلفية بيضاء
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvasTex.width, canvasTex.height);
+        // الشريط الأخضر (النصف الأيسر)
+        ctx.fillStyle = '#006633';
+        ctx.fillRect(0, 0, canvasTex.width / 2, canvasTex.height);
+        // الهلال والنجمة باللون الأحمر (تبسيط راقي)
+        ctx.fillStyle = '#D21034';
+        // هلال كبير
+        ctx.beginPath();
+        ctx.arc(canvasTex.width * 0.65, canvasTex.height / 2, canvasTex.height * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(canvasTex.width * 0.57, canvasTex.height / 2, canvasTex.height * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+        // نجمة خماسية بسيطة
+        ctx.fillStyle = '#D21034';
+        const centerX = canvasTex.width * 0.68;
+        const centerY = canvasTex.height / 2;
+        const outerR = canvasTex.height * 0.09;
+        let rot = Math.PI / 2 * 3;
+        const step = Math.PI / 5;
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            const x1 = centerX + Math.cos(rot) * outerR;
+            const y1 = centerY + Math.sin(rot) * outerR;
+            ctx.lineTo(x1, y1);
+            rot += step;
+            const x2 = centerX + Math.cos(rot) * (outerR * 0.4);
+            const y2 = centerY + Math.sin(rot) * (outerR * 0.4);
+            ctx.lineTo(x2, y2);
+            rot += step;
         }
-        animate();
+        ctx.closePath();
+        ctx.fill();
+    };
+    drawAlgerianFlag();
+    const flagTexture = new THREE.CanvasTexture(canvasTex);
+
+    // --- بناء راية ثلاثية الأبعاد ترفرف (Flag Geometry) ---
+    const width = 2.4;
+    const height = 1.6;
+    const segments = 32; // عدد الأجزاء لانحناء ناعم
+    const geometry = new THREE.PlaneGeometry(width, height, segments, segments);
+    
+    // تدوير الأعمدة
+    const positionAttribute = geometry.attributes.position;
+    for (let i = 0; i <= segments; i++) {
+        for (let j = 0; j <= segments; j++) {
+            const index = i * (segments + 1) + j;
+            const x = positionAttribute.getX(index);
+            // نطبق انحناء أولي خفيف على شكل موجة
+            const z = Math.sin(i * 0.5) * 0.08;
+            positionAttribute.setZ(index, z);
+        }
     }
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshStandardMaterial({
+        map: flagTexture,
+        side: THREE.DoubleSide,
+        roughness: 0.4,
+        metalness: 0.1,
+        emissive: 0x000000
+    });
+    
+    const flagMesh = new THREE.Mesh(geometry, material);
+    
+    // إعداد المشهد
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+    camera.position.set(0, 0, 3.2);
+    camera.lookAt(0, 0, 0);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(280, 160);
+    renderer.setClearColor(0x000000, 0);
+    const container = document.getElementById('flag-canvas');
+    container.appendChild(renderer.domElement);
+    
+    // إضاءة ناعمة
+    const ambientLight = new THREE.AmbientLight(0x404060);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(1, 2, 1);
+    scene.add(dirLight);
+    const backLight = new THREE.DirectionalLight(0x88aaff, 0.5);
+    backLight.position.set(-0.5, 1, -1);
+    scene.add(backLight);
+    
+    scene.add(flagMesh);
+    
+    let time = 0;
+    function animateFlag() {
+        requestAnimationFrame(animateFlag);
+        time += 0.025;
+        
+        // حركة ذكية للراية: تموج يشبه الريح
+        const positions = geometry.attributes.position.array;
+        for (let i = 0; i <= segments; i++) {
+            for (let j = 0; j <= segments; j++) {
+                const index = (i * (segments + 1) + j) * 3;
+                const x = positions[index];
+                // نعطي تموجاً متحركاً يعتمد على الزمن وموقع x
+                const z = Math.sin(i * 0.45 + time * 3) * 0.045 
+                        + Math.cos(j * 0.3 + time * 2.2) * 0.02;
+                positions[index + 2] = z;
+            }
+        }
+        geometry.attributes.position.needsUpdate = true;
+        geometry.computeVertexNormals();
+        
+        // دوران خفيف جداً للراية ككل لإحساس بالحرية
+        flagMesh.rotation.y = Math.sin(time * 0.6) * 0.05;
+        flagMesh.rotation.z = Math.sin(time * 0.7) * 0.02;
+        
+        renderer.render(scene, camera);
+    }
+    
+    animateFlag();
+    
+    // تحديث النسيج لو أردت التحديث (لن نحتاج)
+    setInterval(() => flagTexture.needsUpdate = true, 30000);
 </script>
 
 <script>
     AOS.init({ duration: 800, once: true });
     
-    // نظام الترجمة
+    // نظام الترجمة (ثلاثي اللغات)
     const translations = {
         ar: {
             app_name: "Genix", edition: "نسخة المؤسسات", nav_dashboard: "لوحة القيادة", nav_employees: "الموظفون",
@@ -389,11 +459,8 @@
         elements.forEach(el => {
             const key = el.getAttribute('data-key');
             if(translations[lang] && translations[lang][key]) {
-                if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-                    el.placeholder = translations[lang][key];
-                } else {
-                    el.innerText = translations[lang][key];
-                }
+                if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[lang][key];
+                else el.innerText = translations[lang][key];
             }
         });
         localStorage.setItem('genix_lang', lang);
@@ -408,7 +475,7 @@
     });
     
     if(localStorage.getItem('dark') === 'true') document.body.classList.add('dark');
-    console.log("%c© 2025 Rekab Amine | Genix Enterprise System", "color: #2563eb; font-size: 14px;");
+    console.log("%c© 2025 Rekab Amine | Genix Waving Flag Edition", "color: #2563eb; font-size: 14px;");
 </script>
 </body>
 </html>
