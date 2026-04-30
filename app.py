@@ -154,7 +154,7 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# ==================== صفحة الرئيسية ====================
+# ==================== الصفحة الرئيسية (القالب مدمج هنا) ====================
 
 MAIN_TEMPLATE = '''
 <!DOCTYPE html>
@@ -178,9 +178,13 @@ MAIN_TEMPLATE = '''
         button { background: #1e3c72; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
         .delete { color: red; text-decoration: none; }
         .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
-        {% if is_admin == false %}
-        .admin-only { display: none; }
-        {% endif %}
+        @media (max-width: 600px) {
+            .header { flex-direction: column; gap: 10px; text-align: center; }
+            .stats { flex-direction: column; }
+            .form-row { flex-direction: column; }
+            table { font-size: 12px; }
+            th, td { padding: 8px; }
+        }
     </style>
 </head>
 <body>
@@ -222,7 +226,11 @@ MAIN_TEMPLATE = '''
                 <table>
                     <thead>
                         <tr>
-                            <th>#</th><th>الاسم</th><th>المنصب</th><th>الراتب الأساسي</th><th>الراتب الصافي</th>
+                            <th>#</th>
+                            <th>الاسم</th>
+                            <th>المنصب</th>
+                            <th>الراتب الأساسي</th>
+                            <th>الراتب الصافي</th>
                             {% if is_admin %}<th></th>{% endif %}
                         </tr>
                     </thead>
